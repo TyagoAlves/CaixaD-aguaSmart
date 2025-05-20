@@ -77,11 +77,19 @@ Aguarde a instalação ser concluída.
 ### 3. Exponha a porta serial do Windows para o Docker usando o WinSocat
 
 - Identifique o nome da porta COM do seu ESP8266 no Gerenciador de Dispositivos (exemplo: COM5).
-- Execute o comando abaixo, substituindo `COM5` pelo nome correto da sua porta:
+- O comando para o WinSocat tradicional (GnuWin32) é:
 
 ```powershell
 winsocat.exe -d -d pty,link=\\.\COM5,raw,echo=0 tcp-listen:12345,bind=127.0.0.1
 ```
+
+- Se estiver usando o WinSocat (Firejox), a sintaxe é diferente. Use:
+
+```powershell
+winsocat "COM5" "tcp-l:12345,bind=127.0.0.1"
+```
+
+(Substitua COM5 pelo nome correto da sua porta.)
 
 Deixe essa janela aberta enquanto usar o Docker.
 
