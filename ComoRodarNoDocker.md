@@ -25,56 +25,66 @@ Este projeto já vem pronto para ser usado em um container Docker com PlatformIO
 ## Pré-requisitos
 - Ter o [Docker](https://www.docker.com/products/docker-desktop/) instalado no seu computador.
 
-## Passos para rodar
+## Passo a passo para upload do firmware via Docker no Windows
 
-1. **Abra o terminal na pasta do projeto**
+### 1. Instale o winget (se ainda não tiver)
 
-2. **Construa a imagem Docker:**
-```sh
-docker build -t esp8266-pio .
-```
+O `winget` é o gerenciador de pacotes oficial do Windows. Ele facilita a instalação de programas via linha de comando.
 
-3. **Rode o container para compilar o projeto:**
-   - No Windows (PowerShell):
-> O Docker Desktop para Windows não permite mapear a porta COM diretamente para upload no ESP. Você pode compilar normalmente dentro do container, mas o upload deve ser feito fora do Docker (usando o PlatformIO instalado no Windows ou outra ferramenta).
+- No Windows 10/11 atualizado, o `winget` já deve estar disponível. Para testar, abra o PowerShell e digite:
+  ```powershell
+  winget --version
+  ```
+- Se aparecer a versão, prossiga. Se der erro, atualize o Windows ou instale o [App Installer](https://apps.microsoft.com/store/detail/app-installer/9NBLGGH4NNS1) pela Microsoft Store.
+
+### 2. Instale o WinSocat usando o winget
+
+Com o `winget` instalado, rode o comando abaixo no PowerShell para instalar o WinSocat:
+
 ```powershell
-docker run -it --rm -v "${PWD}:/workspace" esp8266-pio
-```
-> Não use --device=/dev/COM5 ou --device=COM5, pois não funcionam no Docker Desktop para Windows.
-
-   - No Linux, rode (com suporte a upload):
-```sh
-docker run -it --rm --device=/dev/ttyUSB0 -v $(pwd):/workspace esp8266-pio
+winget install GnuWin32.WinSocat
 ```
 
-4. **Dentro do container, compile normalmente:**
-```sh
-platformio run           # Compila
-```
+Aguarde a instalação ser concluída.
 
-5. **Para fazer upload para o ESP no Windows:**
-- Saia do container e use o PlatformIO instalado no Windows, ou outro gravador, para enviar o firmware gerado em `.pio/build/nome-da-plataforma/firmware.bin` para a porta COM do seu ESP.
+### 3. Exponha a porta serial do Windows para o Docker usando o WinSocat
 
-## (Avançado) Usar socat para expor a porta COM do Windows no Docker:
-- Instale o socat para Windows: https://github.com/andrew-d/socat-for-windows/releases
-- Descubra a porta COM do seu ESP (exemplo: COM5).
-- No PowerShell, rode o socat para criar um pipe TCP para a COM5:
+- Identifique o nome da porta COM do seu ESP8266 no Gerenciador de Dispositivos (exemplo: COM5).
+- Execute o comando abaixo, substituindo `COM5` pelo nome correto da sua porta:
+
 ```powershell
-socat -d -d TCP-LISTEN:12345,reuseaddr,fork OPEN:COM5,raw,echo=0,b115200
+winsocat.exe -d -d pty,link=\\.\COM5,raw,echo=0 tcp-listen:12345,bind=127.0.0.1
 ```
-- No Docker, rode o container e mapeie o socket TCP para um dispositivo serial virtual:
+
+Deixe essa janela aberta enquanto usar o Docker.
+
+### 4. Execute o container Docker mapeando a porta virtual
+
+No PowerShell, rode o comando abaixo (ajuste o caminho do projeto se necessário):
+
 ```powershell
-docker run -it --rm -v "${PWD}:/workspace" --device /dev/ttyS10 esp8266-pio
+docker run --rm -it -v "${PWD}:/workspace" -w /workspace platformio/platformio-core pio run -t upload --upload-port=socket://host.docker.internal:12345
 ```
-- Dentro do container, crie o link do socket TCP para o dispositivo serial virtual:
-```sh
-socat pty,link=/dev/ttyS10,raw tcp:host.docker.internal:12345 &
-```
-- No PlatformIO, use /dev/ttyS10 como porta para upload:
-```sh
-platformio run -t upload --upload-port /dev/ttyS10
-```
-> Observação: Esse método é experimental e pode não funcionar com todos os adaptadores USB-Serial. Feche todos os programas que usam a COM5 antes de rodar o socat.
+
+- Certifique-se de que o Docker Desktop está em execução.
+- Se o caminho do seu projeto tiver espaços, mantenha as aspas.
+
+### 5. Se não funcionar: faça o upload fora do Docker
+
+Se o upload via Docker/socat não funcionar (por exemplo, por limitações do Windows ou do seu hardware), faça o upload do firmware usando o PlatformIO instalado diretamente no Windows ou outra ferramenta de sua preferência.
+
+- Você pode instalar o PlatformIO como extensão do VS Code ou via pip:
+  ```powershell
+  pip install platformio
+  ```
+- Depois, rode:
+  ```powershell
+  pio run -t upload
+  ```
+
+---
+
+Dessa forma, siga a ordem: instale o que precisa, tente o método automatizado, e, se não der certo, use a alternativa fora do Docker. Para identificar a porta COM correta, veja a imagem `exemplo-com5.png` incluída neste repositório.
 
 ## Observações
 - O código-fonte do projeto fica sincronizado entre o host e o container.
