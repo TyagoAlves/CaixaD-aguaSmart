@@ -34,39 +34,24 @@ Este projeto já vem pronto para ser usado em um container Docker com PlatformIO
 docker build -t esp8266-pio .
 ```
 
-3. **Rode o container com acesso à porta USB (para upload no ESP):**
+3. **Rode o container para compilar o projeto:**
    - No Windows (PowerShell):
-> Primeiro, descubra qual porta COM seu ESP está usando (exemplo: COM5). Você pode ver isso no Gerenciador de Dispositivos do Windows, em "Portas (COM e LPT)". Veja o exemplo da imagem abaixo:
->
-> ![Exemplo COM5](./exemplo-com5.png)
-
-> Exemplo para COM5:
-```powershell
-docker run -it --rm --device=COM5 -v "${PWD}:/workspace" esp8266-pio
-```
-   - No Linux, rode:
-```sh
-docker run -it --rm --device=/dev/ttyUSB0 -v $(pwd):/workspace esp8266-pio
-```
-   - (No Windows, o upload direto para o ESP pode não funcionar via Docker, mas você pode compilar normalmente e copiar o firmware para gravar fora do container.)
-
-# Observação importante para Windows:
-> Se o caminho da sua pasta tiver espaços (ex: `C:\Users\tyago\OneDrive\Área de Trabalho\arduino teste\CaixaD-aguaSmart`),
-> o comando do Docker pode dar erro de formato. Use aspas duplas no parâmetro -v:
+> O Docker Desktop para Windows não permite mapear a porta COM diretamente para upload no ESP. Você pode compilar normalmente dentro do container, mas o upload deve ser feito fora do Docker (usando o PlatformIO instalado no Windows ou outra ferramenta).
 ```powershell
 docker run -it --rm -v "${PWD}:/workspace" esp8266-pio
 ```
+   - No Linux, rode (com suporte a upload):
+```sh
+docker run -it --rm --device=/dev/ttyUSB0 -v $(pwd):/workspace esp8266-pio
+```
 
-4. **Dentro do container, compile e faça upload normalmente:**
+4. **Dentro do container, compile normalmente:**
 ```sh
 platformio run           # Compila
-platformio run -t upload # Faz upload (se USB disponível)
 ```
 
-5. **Para abrir um shell no container:**
-```sh
-docker run -it --rm -v ${PWD}:/workspace esp8266-pio
-```
+5. **Para fazer upload para o ESP no Windows:**
+- Saia do container e use o PlatformIO instalado no Windows, ou outro gravador, para enviar o firmware gerado em `.pio/build/nome-da-plataforma/firmware.bin` para a porta COM do seu ESP.
 
 ## Observações
 - O código-fonte do projeto fica sincronizado entre o host e o container.
