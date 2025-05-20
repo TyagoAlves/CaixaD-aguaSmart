@@ -57,6 +57,13 @@ ou
 dotnet tool install -g winsocat
 ```
 
+ou baixe diretamente pelo winget na Microsoft Store:
+
+- [WinSocat (Firejox) na Microsoft Store](https://apps.microsoft.com/store/detail/winsocat/9N8G7F7ZK9F8)
+
+> **Atenção:**
+> Se você instalar o WinSocat via `dotnet tool install -g winsocat` e ao rodar o comando aparecer uma mensagem de erro solicitando o .NET 6.0, será necessário instalar o runtime do .NET 6.0 (mesmo que você já tenha versões mais recentes do .NET instaladas). Baixe e instale o runtime em: https://aka.ms/dotnet-core-applaunch?framework=Microsoft.NETCore.App&framework_version=6.0.0&arch=x64&rid=win-x64&os=win10
+
 Aguarde a instalação ser concluída.
 
 ### 3. Exponha a porta serial do Windows para o Docker usando o WinSocat
