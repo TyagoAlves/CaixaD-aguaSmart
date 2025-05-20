@@ -45,10 +45,16 @@ Tente primeiro o comando abaixo (recomendado):
 winget install -e --id Firejox.WinSocat
 ```
 
-Se não funcionar, tente esta alternativa:
+Se não funcionar, tente uma destas alternativas:
 
 ```powershell
 winget install GnuWin32.WinSocat
+```
+
+ou
+
+```powershell
+dotnet tool install -g winsocat
 ```
 
 Aguarde a instalação ser concluída.
