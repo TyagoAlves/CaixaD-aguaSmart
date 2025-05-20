@@ -40,6 +40,8 @@ docker build -t esp8266-pio .
 ```powershell
 docker run -it --rm -v "${PWD}:/workspace" esp8266-pio
 ```
+> Não use --device=/dev/COM5 ou --device=COM5, pois não funcionam no Docker Desktop para Windows.
+
    - No Linux, rode (com suporte a upload):
 ```sh
 docker run -it --rm --device=/dev/ttyUSB0 -v $(pwd):/workspace esp8266-pio
@@ -52,6 +54,27 @@ platformio run           # Compila
 
 5. **Para fazer upload para o ESP no Windows:**
 - Saia do container e use o PlatformIO instalado no Windows, ou outro gravador, para enviar o firmware gerado em `.pio/build/nome-da-plataforma/firmware.bin` para a porta COM do seu ESP.
+
+## (Avançado) Usar socat para expor a porta COM do Windows no Docker:
+- Instale o socat para Windows: https://github.com/andrew-d/socat-for-windows/releases
+- Descubra a porta COM do seu ESP (exemplo: COM5).
+- No PowerShell, rode o socat para criar um pipe TCP para a COM5:
+```powershell
+socat -d -d TCP-LISTEN:12345,reuseaddr,fork OPEN:COM5,raw,echo=0,b115200
+```
+- No Docker, rode o container e mapeie o socket TCP para um dispositivo serial virtual:
+```powershell
+docker run -it --rm -v "${PWD}:/workspace" --device /dev/ttyS10 esp8266-pio
+```
+- Dentro do container, crie o link do socket TCP para o dispositivo serial virtual:
+```sh
+socat pty,link=/dev/ttyS10,raw tcp:host.docker.internal:12345 &
+```
+- No PlatformIO, use /dev/ttyS10 como porta para upload:
+```sh
+platformio run -t upload --upload-port /dev/ttyS10
+```
+> Observação: Esse método é experimental e pode não funcionar com todos os adaptadores USB-Serial. Feche todos os programas que usam a COM5 antes de rodar o socat.
 
 ## Observações
 - O código-fonte do projeto fica sincronizado entre o host e o container.
