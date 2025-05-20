@@ -1,133 +1,121 @@
-# Como rodar este projeto no Docker
+# Guia de Execução do Projeto CaixaD'aguaSmart
 
-## 1. Baixe o projeto do GitHub
-Se ainda não baixou/clonou o projeto, rode no terminal:
-```powershell
-git clone https://github.com/TyagoAlves/CaixaD-aguaSmart.git
-cd CaixaD-aguaSmart
-```
-
----
-
-## Importante: Docker Desktop precisa estar aberto no Windows!
-Se você está no Windows, é obrigatório abrir o aplicativo "Docker Desktop" e aguardar até aparecer "Docker Desktop is running" antes de rodar qualquer comando Docker. Caso contrário, o Docker não será reconhecido pelo terminal.
-
-Se aparecer erro como:
-```
-ERROR: error during connect: Head "http://%2F%2F.%2Fpipe%2FdockerDesktopLinuxEngine/_ping": open //./pipe/dockerDesktopLinuxEngine: O sistema não pode encontrar o arquivo especificado.
-```
-Isso significa que o Docker Desktop não está aberto ou inicializado. Abra o Docker Desktop e tente novamente.
-
----
-
-Este projeto já vem pronto para ser usado em um container Docker com PlatformIO e todas as dependências para ESP8266/Arduino.
+Este guia explica como configurar e executar o projeto usando Docker, facilitando o desenvolvimento e upload de firmware para ESP8266.
 
 ## Pré-requisitos
-- Ter o [Docker](https://www.docker.com/products/docker-desktop/) instalado no seu computador.
 
-## Passo a passo para upload do firmware via Docker no Windows
+- [Docker Desktop](https://www.docker.com/products/docker-desktop/) instalado e em execução
+- Conexão USB com seu dispositivo ESP8266
 
-### 1. Instale o winget (se ainda não tiver)
+## Métodos de Upload do Firmware (Recomendados em ordem)
 
-O `winget` é o gerenciador de pacotes oficial do Windows. Ele facilita a instalação de programas via linha de comando.
+### Método 1: PuTTY (Recomendado)
 
-- No Windows 10/11 atualizado, o `winget` já deve estar disponível. Para testar, abra o PowerShell e digite:
+PuTTY é uma solução simples e confiável para redirecionar portas seriais:
+
+1. **Instale o PuTTY**:
+   ```powershell
+   winget install --id PuTTY.PuTTY
+   ```
+
+2. **Configure o redirecionamento de porta**:
+   - Abra PuTTY
+   - Em "Connection > Serial", configure:
+     - Serial line: COM5 (substitua pela sua porta)
+     - Speed: 115200
+   - Volte para "Session" e em "Connection type" selecione "Serial"
+   - Clique em "Open" para iniciar a conexão
+
+3. **Execute o Docker com a porta redirecionada**:
+   ```powershell
+   docker run --rm -it -v "${PWD}:/workspace" -w /workspace platformio/platformio-core pio run -t upload --upload-port=socket://host.docker.internal:12345
+   ```
+
+### Método 2: WinSocat
+
+Se o PuTTY não funcionar para você, tente o WinSocat:
+
+1. **Instale o WinSocat** (escolha uma opção):
+   ```powershell
+   dotnet tool install -g winsocat
+   ```
+   ou
+   ```powershell
+   winget install -e --id Firejox.WinSocat
+   ```
+
+2. **Exponha a porta serial**:
+   ```powershell
+   winsocat "COM5" "tcp-l:12345,bind=127.0.0.1"
+   ```
+   (Substitua COM5 pela sua porta)
+
+3. **Execute o Docker** (mesmo comando do Método 1)
+
+### Método 3: Upload direto (sem Docker)
+
+Se os métodos anteriores falharem:
+
+1. **Instale o PlatformIO**:
+   ```powershell
+   pip install platformio
+   ```
+   ou instale a extensão PlatformIO no VS Code
+
+2. **Execute o upload diretamente**:
+   ```powershell
+   pio run -t upload
+   ```
+
+## Guia Detalhado
+
+### Começando com o projeto
+
+1. **Clone o repositório**:
+   ```powershell
+   git clone https://github.com/TyagoAlves/CaixaD-aguaSmart.git
+   cd CaixaD-aguaSmart
+   ```
+
+2. **Verifique o Docker Desktop**:
+   - No Windows, o Docker Desktop **deve estar aberto e inicializado** antes de executar comandos
+   - Aguarde até ver a mensagem "Docker Desktop is running"
+   - Se aparecer erro como `ERROR: error during connect: Head "http://%2F%2F.%2Fpipe%2FdockerDesktopLinuxEngine/_ping"`, abra o Docker Desktop e tente novamente
+
+### Detalhes sobre WinSocat
+
+Se optar pelo WinSocat, observe:
+
+- **Versão dotnet/Firejox**: Sintaxe mais simples, mas recursos limitados
   ```powershell
-  winget --version
+  winsocat "COM5" "tcp-l:12345,bind=127.0.0.1"
   ```
-- Se aparecer a versão, prossiga. Se der erro, atualize o Windows ou instale o [App Installer](https://apps.microsoft.com/store/detail/app-installer/9NBLGGH4NNS1) pela Microsoft Store.
 
-### 2. Instale o WinSocat
-
-Tente primeiro o comando abaixo (recomendado):
-
-```powershell
-dotnet tool install -g winsocat
-```
-
-Se não funcionar, tente uma destas alternativas:
-
-```powershell
-winget install -e --id Firejox.WinSocat
-```
-
-ou
-
-```powershell
-winget install GnuWin32.WinSocat
-```
-
-ou baixe diretamente pela Microsoft Store:
-
-- [WinSocat (Firejox) na Microsoft Store](https://apps.microsoft.com/store/detail/winsocat/9N8G7F7ZK9F8)
-
-> **Atenção:**
-> Se você instalar o WinSocat via `dotnet tool install -g winsocat` e ao rodar o comando aparecer uma mensagem de erro solicitando o .NET 6.0, será necessário instalar o runtime do .NET 6.0 (mesmo que você já tenha versões mais recentes do .NET instaladas).
->
-> Você pode baixar e instalar manualmente por este link:
-> https://aka.ms/dotnet-core-applaunch?framework=Microsoft.NETCore.App&framework_version=6.0.0&arch=x64&rid=win-x64&os=win10
->
-> Ou instalar via winget pelo terminal:
-> ```powershell
-> winget install --id Microsoft.DotNet.DesktopRuntime.6 --source winget
-> ```
-
-Aguarde a instalação ser concluída.
-
-### 3. Exponha a porta serial do Windows para o Docker usando o WinSocat
-
-- Identifique o nome da porta COM do seu ESP8266 no Gerenciador de Dispositivos (exemplo: COM5).
-- Se estiver usando o WinSocat instalado via dotnet (ou Firejox), a sintaxe é diferente e mais limitada. Use:
-
-```powershell
-winsocat "COM5" "tcp-l:12345,bind=127.0.0.1"
-```
-
-> ⚠️ **Atenção:**
-> A versão instalada via `dotnet tool install -g winsocat` (e também a Firejox) não suporta parâmetros avançados como `pty`, `raw` e `echo=0`. Se precisar desses recursos (por exemplo, para upload de firmware em alguns dispositivos), utilize o WinSocat GnuWin32.
-
-- O comando para o WinSocat tradicional (GnuWin32) é:
-
-```powershell
-winsocat.exe -d -d pty,link=\\.\COM5,raw,echo=0 tcp-listen:12345,bind=127.0.0.1
-```
-
-(Substitua COM5 pelo nome correto da sua porta.)
-
-Deixe essa janela aberta enquanto usar o Docker.
-
-### 4. Execute o container Docker mapeando a porta virtual
-
-No PowerShell, rode o comando abaixo (ajuste o caminho do projeto se necessário):
-
-```powershell
-docker run --rm -it -v "${PWD}:/workspace" -w /workspace platformio/platformio-core pio run -t upload --upload-port=socket://host.docker.internal:12345
-```
-
-- Certifique-se de que o Docker Desktop está em execução.
-- Se o caminho do seu projeto tiver espaços, mantenha as aspas.
-
-### 5. Se não funcionar: faça o upload fora do Docker
-
-Se o upload via Docker/socat não funcionar (por exemplo, por limitações do Windows ou do seu hardware), faça o upload do firmware usando o PlatformIO instalado diretamente no Windows ou outra ferramenta de sua preferência.
-
-- Você pode instalar o PlatformIO como extensão do VS Code ou via pip:
+- **Versão GnuWin32**: Mais recursos, mas sintaxe mais complexa
   ```powershell
-  pip install platformio
+  winsocat.exe -d -d pty,link=\\.\COM5,raw,echo=0 tcp-listen:12345,bind=127.0.0.1
   ```
-- Depois, rode:
+
+- **Requisito .NET 6.0**: Se necessário, instale:
   ```powershell
-  pio run -t upload
+  winget install --id Microsoft.DotNet.DesktopRuntime.6 --source winget
   ```
+  ou baixe em: https://aka.ms/dotnet-core-applaunch?framework=Microsoft.NETCore.App&framework_version=6.0.0&arch=x64&rid=win-x64&os=win10
+
+### Identificando a porta COM
+
+Para identificar a porta COM correta:
+1. Abra o Gerenciador de Dispositivos do Windows
+2. Expanda "Portas (COM e LPT)"
+3. Localize seu dispositivo ESP8266 (geralmente aparece como "USB-SERIAL CH340")
+4. Veja a imagem `exemplo-com5.png` incluída no repositório para referência
+
+## Observações Adicionais
+
+- O código-fonte fica sincronizado entre o host e o container
+- Para instalar bibliotecas adicionais: `platformio lib install <nome>` dentro do container
+- Scripts PowerShell de automação devem ser executados no Windows, não no container
 
 ---
 
-Dessa forma, siga a ordem: instale o que precisa, tente o método automatizado, e, se não der certo, use a alternativa fora do Docker. Para identificar a porta COM correta, veja a imagem `exemplo-com5.png` incluída neste repositório.
-
-## Observações
-- O código-fonte do projeto fica sincronizado entre o host e o container.
-- Se precisar instalar mais bibliotecas, use `platformio lib install <nome>` dentro do container.
-- Para rodar scripts PowerShell de automação (gitpush.ps1), rode-os no Windows, não dentro do container.
-
----
-Dúvidas? Só perguntar!
+Dúvidas? Abra uma issue no GitHub ou entre em contato!
