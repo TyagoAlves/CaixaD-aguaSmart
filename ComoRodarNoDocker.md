@@ -39,7 +39,13 @@ O `winget` é o gerenciador de pacotes oficial do Windows. Ele facilita a instal
 
 ### 2. Instale o WinSocat usando o winget
 
-Com o `winget` instalado, rode o comando abaixo no PowerShell para instalar o WinSocat:
+Tente primeiro o comando abaixo (recomendado):
+
+```powershell
+winget install -e --id Firejox.WinSocat
+```
+
+Se não funcionar, tente esta alternativa:
 
 ```powershell
 winget install GnuWin32.WinSocat
