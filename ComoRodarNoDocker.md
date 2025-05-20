@@ -1,5 +1,25 @@
 # Como rodar este projeto no Docker
 
+## 1. Baixe o projeto do GitHub
+Se ainda não baixou/clonou o projeto, rode no terminal:
+```powershell
+git clone https://github.com/TyagoAlves/CaixaD-aguaSmart.git
+cd CaixaD-aguaSmart
+```
+
+---
+
+## Importante: Docker Desktop precisa estar aberto no Windows!
+Se você está no Windows, é obrigatório abrir o aplicativo "Docker Desktop" e aguardar até aparecer "Docker Desktop is running" antes de rodar qualquer comando Docker. Caso contrário, o Docker não será reconhecido pelo terminal.
+
+Se aparecer erro como:
+```
+ERROR: error during connect: Head "http://%2F%2F.%2Fpipe%2FdockerDesktopLinuxEngine/_ping": open //./pipe/dockerDesktopLinuxEngine: O sistema não pode encontrar o arquivo especificado.
+```
+Isso significa que o Docker Desktop não está aberto ou inicializado. Abra o Docker Desktop e tente novamente.
+
+---
+
 Este projeto já vem pronto para ser usado em um container Docker com PlatformIO e todas as dependências para ESP8266/Arduino.
 
 ## Pré-requisitos
@@ -18,7 +38,7 @@ docker build -t esp8266-pio .
    - No Windows, compartilhe a porta COM (exemplo: COM5) usando o Docker Desktop (veja docs Docker para serial/USB no Windows).
    - No Linux, rode:
 ```sh
-docker run -it --rm --device=/dev/ttyUSB0 -v %cd%:/workspace esp8266-pio
+docker run -it --rm --device=/dev/ttyUSB0 -v $(pwd):/workspace esp8266-pio
 ```
    - No Windows (PowerShell):
 ```powershell
