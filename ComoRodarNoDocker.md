@@ -36,7 +36,9 @@ docker build -t esp8266-pio .
 
 3. **Rode o container com acesso à porta USB (para upload no ESP):**
    - No Windows (PowerShell):
-> Primeiro, descubra qual porta COM seu ESP está usando (exemplo: COM5). Você pode ver isso no Gerenciador de Dispositivos do Windows, em "Portas (COM e LPT)".
+> Primeiro, descubra qual porta COM seu ESP está usando (exemplo: COM5). Você pode ver isso no Gerenciador de Dispositivos do Windows, em "Portas (COM e LPT)". Veja o exemplo da imagem abaixo:
+>
+> ![Exemplo COM5](./exemplo-com5.png)
 
 > Exemplo para COM5:
 ```powershell
