@@ -23,17 +23,51 @@ PuTTY é uma solução simples e confiável para redirecionar portas seriais:
    - Em "Connection > Serial", configure:
      - Serial line: COM5 (substitua pela sua porta)
      - Speed: 115200
-   - Volte para "Session" e em "Connection type" selecione "Serial"
+     - Data bits: 8
+     - Stop bits: 1
+     - Parity: None
+     - Flow control: None
+   - No painel esquerdo, vá para "Connection > SSH > Tunnels"
+   - Em "Source port", digite 12345
+   - Em "Destination", digite localhost:COM5 ou apenas COM5
+   - Selecione "Local" e "Auto"
+   - Clique em "Add"
+   - Volte para "Session" e salve a configuração (opcional)
    - Clique em "Open" para iniciar a conexão
 
 3. **Execute o Docker com a porta redirecionada**:
    ```powershell
-   docker run --rm -it -v "${PWD}:/workspace" -w /workspace platformio/platformio-core pio run -t upload --upload-port=socket://host.docker.internal:12345
+   docker run --rm -it -v "${PWD}:/workspace" -w /workspace platformio/platformio-core pio run -t upload --upload-port=socket://localhost:12345
    ```
 
-### Método 2: WinSocat
+   Se ocorrer erro de conexão recusada, tente:
+   ```powershell
+   # Descubra seu IP
+   ipconfig
+   
+   # Use o IP no comando (substitua 192.168.1.x pelo seu IP real)
+   docker run --rm -it -v "${PWD}:/workspace" -w /workspace platformio/platformio-core pio run -t upload --upload-port=socket://192.168.1.x:12345
+   ```
 
-Se o PuTTY não funcionar para você, tente o WinSocat:
+### Método 2: Com2TCP (Alternativa ao PuTTY)
+
+Se o PuTTY não funcionar, tente o Com2TCP:
+
+1. **Instale Com2TCP**:
+   - Baixe em: https://sourceforge.net/projects/com0com/files/com2tcp/
+   - Instale seguindo as instruções
+
+2. **Execute o Com2TCP**:
+   ```powershell
+   com2tcp --baud 115200 \\.\COM5 12345
+   ```
+   (Substitua COM5 pela sua porta)
+
+3. **Execute o Docker** (mesmo comando do Método 1)
+
+### Método 3: WinSocat
+
+Se as opções anteriores não funcionarem:
 
 1. **Instale o WinSocat** (escolha uma opção):
    ```powershell
@@ -52,7 +86,7 @@ Se o PuTTY não funcionar para você, tente o WinSocat:
 
 3. **Execute o Docker** (mesmo comando do Método 1)
 
-### Método 3: Upload direto (sem Docker)
+### Método 4: Upload direto (sem Docker)
 
 Se os métodos anteriores falharem:
 
@@ -81,6 +115,20 @@ Se os métodos anteriores falharem:
    - No Windows, o Docker Desktop **deve estar aberto e inicializado** antes de executar comandos
    - Aguarde até ver a mensagem "Docker Desktop is running"
    - Se aparecer erro como `ERROR: error during connect: Head "http://%2F%2F.%2Fpipe%2FdockerDesktopLinuxEngine/_ping"`, abra o Docker Desktop e tente novamente
+
+### Solução de Problemas com PuTTY
+
+Se você encontrar erros como:
+```
+ConnectionRefusedError: [Errno 111] Connection refused
+serial.serialutil.SerialException: Could not open port socket://localhost:12345: [Errno 111] Connection refused
+```
+
+Verifique:
+1. Se o PuTTY está configurado corretamente e a conexão está ativa
+2. Se você está usando o endereço correto (tente `localhost`, `127.0.0.1` ou seu IP real)
+3. Se a porta 12345 não está sendo bloqueada pelo firewall
+4. Se o redirecionamento está configurado corretamente em "Connection > SSH > Tunnels"
 
 ### Detalhes sobre WinSocat
 
