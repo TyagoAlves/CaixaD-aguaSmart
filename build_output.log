@@ -1,7 +1,0 @@
-// Última rede Wi-Fi conectada e IP DHCP fornecido:
-// Para registrar essas informações, adicione prints no seu código após conectar ao Wi-Fi:
-// Serial.print("SSID conectado: "); Serial.println(ssid);
-// Serial.print("IP DHCP: "); Serial.println(WiFi.localIP());
-// Exemplo de última conexão:
-SSID conectado: (preencher com o último SSID)
-IP DHCP: (preencher com o último IP)

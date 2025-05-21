@@ -1,123 +1,98 @@
-# Projeto ESP8266 com MQTT e Configuração Web
+# ESP8266 IoT com MQTT e Configuração Web
 
 Este projeto implementa um sistema IoT baseado em ESP8266 que combina comunicação MQTT, servidor web para configuração e leitura de sensor ultrassônico.
 
-## Sobre o main.cpp
+## Funcionalidades do muitoBom.h
 
-O arquivo `main.cpp` é o núcleo do projeto, responsável por gerenciar todas as funcionalidades do dispositivo ESP8266. Abaixo estão as principais características e componentes:
+O arquivo `muitoBom.h` é o componente principal do projeto e oferece as seguintes funcionalidades:
 
-### Bibliotecas Utilizadas
+### 1. Configuração WiFi via Portal Web
+- **Modo AP Automático**: Cria um ponto de acesso WiFi quando não há configuração salva
+- **Interface Web Amigável**: Página web responsiva para configurar credenciais WiFi
+- **Armazenamento na EEPROM**: Salva as credenciais WiFi na memória não-volátil
+- **Reset via Botão**: Pressione o botão FLASH por 3 segundos para limpar configurações
 
-```cpp
-#include <ESP8266WiFi.h>    // Conectividade WiFi para ESP8266
-#include <PubSubClient.h>   // Cliente MQTT
-#include <EEPROM.h>         // Armazenamento persistente
-#include <ESP8266WebServer.h> // Servidor web para configuração
+### 2. Comunicação MQTT
+- **Conexão com Broker**: Conecta-se ao broker MQTT público (test.mosquitto.org)
+- **Publicação de Dados**: Envia leituras do sensor ultrassônico periodicamente
+- **Recebimento de Comandos**: Processa comandos "LIGAR" e "DESLIGAR" para controlar saídas
+- **Reconexão Automática**: Gerencia reconexões em caso de falha
+
+### 3. Sensor Ultrassônico
+- **Leitura de Distância**: Mede distâncias usando sensor ultrassônico HC-SR04
+- **Controle Automático**: Aciona saídas com base nas leituras do sensor
+- **Publicação MQTT**: Envia os valores medidos para o broker MQTT
+
+### 4. Página de Depuração
+- **Informações em Tempo Real**: Acesse `/debug` para ver status do sistema
+- **Dados Exibidos**: WiFi, MQTT, memória, tempo de execução e mais
+- **Interface Responsiva**: Design moderno e fácil de usar
+
+## Requisitos de Hardware
+
+- **Placa**: NodeMCU ESP8266 ou compatível
+- **Sensor**: HC-SR04 (sensor ultrassônico)
+- **Componentes**:
+  - LED ou relé conectado ao pino GPIO16 (D0)
+  - Botão FLASH do ESP8266 (GPIO0)
+  - Conexões para o sensor ultrassônico:
+    - TRIGGER: GPIO5 (D1)
+    - ECHO: GPIO18 (pode precisar ser ajustado para GPIO4/D2 em alguns modelos)
+
+## Requisitos de Software e Dependências
+
+- **PlatformIO** (recomendado) ou Arduino IDE
+- **Bibliotecas**:
+  - ESP8266WiFi
+  - PubSubClient (para MQTT)
+  - EEPROM
+  - ESP8266WebServer
+
+## Como Usar o PlatformIO
+
+PlatformIO é um ecossistema de desenvolvimento para IoT que facilita o trabalho com ESP8266 e outras placas.
+
+### Instalação do PlatformIO
+
+1. **Instale o Visual Studio Code**: Baixe e instale o [VS Code](https://code.visualstudio.com/)
+2. **Instale a Extensão PlatformIO**: Abra o VS Code, vá para Extensions (Ctrl+Shift+X) e busque por "PlatformIO"
+3. **Reinicie o VS Code** após a instalação
+
+### Configuração do Projeto
+
+1. **Abra o Projeto**: File > Open Folder e selecione a pasta do projeto
+2. **Verifique o platformio.ini**: Este arquivo deve conter:
+
+```ini
+[env:nodemcuv2]
+platform = espressif8266
+board = nodemcuv2
+framework = arduino
+lib_deps = 
+    PubSubClient
+monitor_speed = 115200
 ```
 
-### Definições de Hardware
+### Compilação e Upload
 
-- **TRIGGER (GPIO5)**: Pino para acionar o sensor ultrassônico
-- **READ (GPIO18)**: Pino para leitura do sensor ultrassônico
-- **SWITCH (GPIO16)**: Pino para controle de saída (LED/relé)
-- **FLASH_BUTTON (GPIO0)**: Botão flash do ESP8266 para reset de configurações
-
-### Principais Funcionalidades
-
-1. **Modo de Configuração AP**
-   - Cria um ponto de acesso WiFi quando não há configuração salva
-   - Interface web para configurar credenciais WiFi
-   - Página de depuração em `/debug` para monitoramento do dispositivo
-
-2. **Conectividade MQTT**
-   - Conexão com broker MQTT (test.mosquitto.org)
-   - Publicação de dados do sensor em tópicos configuráveis
-   - Recebimento de comandos para controle do pino SWITCH
-
-3. **Gerenciamento de WiFi**
-   - Armazenamento de credenciais na EEPROM
-   - Reconexão automática
-   - Reset de configurações através do botão FLASH
-
-4. **Sensor Ultrassônico**
-   - Leitura periódica de distância
-   - Publicação dos valores via MQTT
-   - Controle automático baseado na leitura do sensor
-
-### Fluxo de Execução
-
-1. **Inicialização (setup)**
-   - Configura pinos e comunicação serial
-   - Tenta conectar ao WiFi usando credenciais salvas
-   - Se falhar, inicia modo AP para configuração
-   - Configura servidor MQTT e callbacks
-
-2. **Loop Principal (loop)**
-   - Monitora o botão FLASH para reset
-   - Processa requisições web
-   - Mantém conexão MQTT ativa
-   - Realiza leituras periódicas do sensor
-   - Publica dados e controla saídas
-
-## Sistema de Versões
-
-O projeto suporta diferentes versões através da importação seletiva de arquivos `.ino`. Abaixo estão as versões disponíveis:
-
-### Versão 1.0 - Básica
-- Implementação padrão com funcionalidades essenciais
-- Arquivo: `main.cpp` (versão atual)
-
-### Versão 2.0 - Debug Avançado
-- Adiciona página de depuração melhorada
-- Arquivo: `pagina debug boa 15-54 20-05-2025.ino`
-
-### Versão 3.0 - Configuração Completa
-- Sistema completo com múltiplas páginas de configuração
-- Arquivo: `vaidarcerto.ino`
-
-## Como Alterar Versões
-
-Para alterar entre as diferentes versões do projeto, você pode modificar o arquivo `main.cpp` para importar o código desejado. Existem duas abordagens:
-
-### Abordagem 1: Substituição Direta
-
-Substitua o conteúdo do `main.cpp` pelo conteúdo do arquivo `.ino` desejado.
-
-### Abordagem 2: Sistema de Versões por Compilação Condicional
-
-Adicione ao início do `main.cpp`:
-
-```cpp
-// Selecione a versão desejada descomentando apenas uma linha
-#define VERSION_BASIC
-//#define VERSION_DEBUG
-//#define VERSION_FULL
-
-#ifdef VERSION_BASIC
-// Código da versão básica
-#endif
-
-#ifdef VERSION_DEBUG
-// Código da versão com debug avançado
-#endif
-
-#ifdef VERSION_FULL
-// Código da versão completa
-#endif
-```
+1. **Compilar**: Clique no ícone ✓ (Check) na barra inferior do VS Code
+2. **Upload**: Clique no ícone → (Right Arrow) na barra inferior
+3. **Monitor Serial**: Clique no ícone 🔌 (Plug) para abrir o monitor serial
 
 ## Instruções de Uso
 
-1. Compile e carregue o código para o ESP8266
-2. Se não houver configuração WiFi salva, conecte-se à rede "ESP8266_Config" (senha: 12345678)
-3. Acesse 192.168.4.1 no navegador para configurar o WiFi
-4. Após configurado, o dispositivo se conectará à sua rede WiFi
-5. Para acessar a página de debug, use http://[IP-DO-ESP]/debug
-6. Para resetar as configurações, mantenha o botão FLASH pressionado por 3 segundos
+1. **Primeira Inicialização**: O ESP8266 criará uma rede WiFi chamada "ESP8266_Config" (senha: 12345678)
+2. **Configuração WiFi**: Conecte-se a esta rede e acesse 192.168.4.1 no navegador
+3. **Selecione sua Rede**: Escolha sua rede WiFi e insira a senha
+4. **Operação Normal**: Após configurado, o dispositivo se conectará à sua rede WiFi
+5. **Página de Debug**: Acesse http://[IP-DO-ESP]/debug para monitorar o sistema
+6. **Reset**: Para resetar as configurações, mantenha o botão FLASH pressionado por 3 segundos
 
-## Notas de Desenvolvimento
+## Personalização
 
-- O servidor web utiliza HTML e CSS inline para uma interface amigável
-- As credenciais WiFi são armazenadas de forma segura na EEPROM
-- O sistema é projetado para ser resiliente a falhas de conexão
-- A página de debug fornece informações úteis para diagnóstico
+Para personalizar o projeto:
+
+1. **Broker MQTT**: Altere as variáveis `mqttServer` e `mqttPort` para usar seu próprio broker
+2. **Tópicos MQTT**: Modifique as variáveis `topicBase`, `topicSubscribe` e `topicPublish`
+3. **Intervalo de Leitura**: Ajuste a variável `interval` para mudar a frequência de leitura do sensor
+4. **Pinos**: Modifique as definições de pinos conforme necessário para seu hardware
