@@ -6,7 +6,7 @@
 // --- Definições de pinos ---
 #define TRIGGER 5
 #define READ 18
-#define SWITCH 16
+#define SWITCH LED_BUILTIN
 #define FLASH_BUTTON 0 // GPIO0 normalmente é o botão FLASH no ESP8266
 
 // --- Protótipos de funções auxiliares ---
@@ -211,9 +211,11 @@ void setup() {
 void loop() {
   handleFlashButton();
   configServer.handleClient(); // Sempre processa requisições HTTP
+  
+  // Se estiver em modo AP, mantenha o LED sempre aceso
   if (apMode) {
     digitalWrite(SWITCH, HIGH); // LED sempre aceso no AP
-    return;
+    return; // Sai da função para não executar o resto do código
   }
 
   if (!client.connected()) {
@@ -221,7 +223,7 @@ void loop() {
   }
   client.loop();
 
-  // LED OFF quando conectado (fica só piscando em publish/receive)
+  // Mantém o LED desligado quando conectado (só pisca ao publicar/receber)
   digitalWrite(SWITCH, LOW);
 
   // A cada intervalo, envia leitura
@@ -231,16 +233,16 @@ void loop() {
     float distancia = readDistanceCM();
     Serial.print("Distância: ");
     Serial.println(distancia);
+    
     // Publica distância
     String mensagem = String(distancia, 2); // 2 casas decimais
     client.publish(topicPublish, mensagem.c_str());
-    blinkLED(); // Pisca LED ao publicar MQTT
-    // Controle do SWITCH baseado na distância
-    if (distancia > 300) {
-      digitalWrite(SWITCH, HIGH);
-    } else {
-      digitalWrite(SWITCH, LOW);
-    }
+    
+    // Pisca LED ao publicar no MQTT
+    blinkLED();
+    
+    // Não controla o LED baseado na distância para manter o comportamento desejado
+    // Removido o controle baseado na distância para que o LED só pisque ao publicar
   }
 
   // Exemplo de uso do blinkLED() em publish/receive:
@@ -316,11 +318,14 @@ void startAPMode() {
   setupConfigServerRoutes();
   configServer.begin();
   digitalWrite(SWITCH, HIGH); // LED sempre aceso no AP
+  Serial.println("Modo AP ativado - LED permanecerá aceso");
 }
 void stopAPMode() {
   apMode = false;
   configServer.stop();
   WiFi.softAPdisconnect(true);
+  digitalWrite(SWITCH, LOW); // Desliga o LED ao sair do modo AP
+  Serial.println("Saindo do modo AP - LED será controlado pelo modo normal");
 }
 
 void handleFlashButton() {
@@ -339,8 +344,11 @@ void handleFlashButton() {
 }
 
 void blinkLED() {
-  digitalWrite(SWITCH, HIGH);
-  delay(80);
-  digitalWrite(SWITCH, LOW);
-  delay(80);
+  // Não pisca o LED se estiver em modo AP (já está sempre aceso)
+  if (!apMode) {
+    digitalWrite(SWITCH, HIGH);
+    delay(80);
+    digitalWrite(SWITCH, LOW);
+    delay(80);
+  }
 }
