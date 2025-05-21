@@ -12,7 +12,7 @@ Este projeto implementa um sistema IoT baseado em ESP8266 que combina comunicaç
 
 ### 2. Comunicação MQTT
 - **Conexão com Broker**: Conecta-se ao broker MQTT público (test.mosquitto.org)
-- **Publicação de Dados**: Envia leituras do sensor ultrassônico periodicamente
+- **Publicação de Dados**: Envia leituras do sensor ultrassônico periodicamente no tópico "meuESP8266/saida"
 - **Publicação de IP**: Publica automaticamente o IP no tópico "meuESP8266/IPnaRede" ao conectar
 - **Recebimento de Comandos**: Processa comandos "LIGAR" e "DESLIGAR" para controlar saídas
 - **Reconexão Automática**: Gerencia reconexões em caso de falha
@@ -67,8 +67,15 @@ PlatformIO é um ecossistema de desenvolvimento para IoT que facilita o trabalho
 ### Instalação do PlatformIO
 
 1. **Instale o Visual Studio Code**: Baixe e instale o [VS Code](https://code.visualstudio.com/)
-2. **Instale a Extensão PlatformIO**: Abra o VS Code, vá para Extensions (Ctrl+Shift+X) e busque por "PlatformIO"
-3. **Reinicie o VS Code** após a instalação
+   
+   **Ou instale usando Winget
+   
+   ```iniwinget install --id Microsoft.VisualStudioCode -e```
+   
+3. **Instale a Extensão PlatformIO**: Abra o VS Code, vá para Extensions (Ctrl+Shift+X) e busque por "PlatformIO"
+4. **Reinicie o VS Code** após a instalação
+
+
 
 ### Configuração do Projeto
 
