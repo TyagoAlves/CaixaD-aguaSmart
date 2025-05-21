@@ -2,9 +2,7 @@
 
 Este projeto implementa um sistema IoT baseado em ESP8266 que combina comunicação MQTT, servidor web para configuração e leitura de sensor ultrassônico.
 
-## Funcionalidades do muitoBom.h
-
-O arquivo `muitoBom.h` é o componente principal do projeto e oferece as seguintes funcionalidades:
+## Funcionalidades Principais
 
 ### 1. Configuração WiFi via Portal Web
 - **Modo AP Automático**: Cria um ponto de acesso WiFi quando não há configuração salva
@@ -39,6 +37,19 @@ O arquivo `muitoBom.h` é o componente principal do projeto e oferece as seguint
   - Conexões para o sensor ultrassônico:
     - TRIGGER: GPIO5 (D1)
     - ECHO: GPIO18 (pode precisar ser ajustado para GPIO4/D2 em alguns modelos)
+
+## Mapeamento de Pinos no Arduino/ESP8266
+
+Para conectar corretamente os componentes ao ESP8266, use este mapeamento de pinos:
+
+| Componente | Pino ESP8266 | Pino NodeMCU | Função |
+|------------|--------------|--------------|--------|
+| Trigger (Sensor) | GPIO5 | D1 | Saída para trigger do sensor ultrassônico |
+| Echo (Sensor) | GPIO18 (ou GPIO4) | D2 | Entrada para echo do sensor ultrassônico |
+| LED/Relé | GPIO16 | D0 | Saída para controle do LED ou relé |
+| Botão FLASH | GPIO0 | FLASH | Botão para reset de configurações |
+
+**Nota**: O ESP8266 usa numeração GPIO diferente da numeração física dos pinos. A tabela acima mostra ambas as referências para facilitar a conexão.
 
 ## Requisitos de Software e Dependências
 
@@ -132,19 +143,6 @@ O IoT MQTT Panel é um aplicativo Android que permite monitorar e controlar disp
 1. **Conecte ao Broker**: Clique no botão "Conectar" no canto superior direito
 2. **Visualize os Dados**: Os painéis mostrarão os dados recebidos do ESP8266
 3. **Controle o Dispositivo**: Use o switch para enviar comandos LIGAR/DESLIGAR
-
-## Mapeamento de Pinos no Arduino/ESP8266
-
-Para conectar corretamente os componentes ao ESP8266, use este mapeamento de pinos:
-
-| Componente | Pino ESP8266 | Pino NodeMCU | Função |
-|------------|--------------|--------------|--------|
-| Trigger (Sensor) | GPIO5 | D1 | Saída para trigger do sensor ultrassônico |
-| Echo (Sensor) | GPIO18 (ou GPIO4) | D2 | Entrada para echo do sensor ultrassônico |
-| LED/Relé | GPIO16 | D0 | Saída para controle do LED ou relé |
-| Botão FLASH | GPIO0 | FLASH | Botão para reset de configurações |
-
-**Nota**: O ESP8266 usa numeração GPIO diferente da numeração física dos pinos. A tabela acima mostra ambas as referências para facilitar a conexão.
 
 ## Personalização
 
