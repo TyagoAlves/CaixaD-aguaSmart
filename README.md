@@ -14,6 +14,7 @@ Sistema IoT baseado em ESP8266 com comunicação MQTT, servidor web para configu
 - [Instalação](#-instalação)
 - [Configuração](#-configuração)
 - [Uso com MQTT Panel](#-uso-com-mqtt-panel)
+- [Uso com Arduino IDE](#-uso-com-arduino-ide)
 - [Personalização](#-personalização)
 
 ## 🚀 Funcionalidades
@@ -181,6 +182,69 @@ monitor_speed = 115200
 2. Os painéis mostrarão os dados recebidos do ESP8266
 3. Use os switches para enviar comandos LIGAR/DESLIGAR
 4. Envie comandos MIN: e MAX: para configurar os limites de distância
+
+## 🔌 Uso com Arduino IDE
+
+Se preferir usar a Arduino IDE em vez do PlatformIO, siga estas instruções:
+
+### Configuração da Arduino IDE
+
+1. **Instale a Arduino IDE**:
+   - Download: [Arduino IDE](https://www.arduino.cc/en/software)
+
+2. **Configure o suporte ao ESP8266**:
+   - Abra a Arduino IDE
+   - Vá para Arquivo > Preferências
+   - Em "URLs Adicionais para Gerenciadores de Placas", adicione:
+     ```
+     http://arduino.esp8266.com/stable/package_esp8266com_index.json
+     ```
+   - Clique em OK
+   - Vá para Ferramentas > Placa > Gerenciador de Placas
+   - Procure por "ESP8266" e instale "ESP8266 Community"
+
+3. **Selecione a placa correta**:
+   - Vá para Ferramentas > Placa > ESP8266 Boards
+   - **IMPORTANTE: Selecione "NodeMCU 1.0 (ESP-12E Module)"** - Esta é a placa recomendada para este projeto
+   - Configure as opções:
+     - Upload Speed: 115200
+     - CPU Frequency: 80MHz
+     - Flash Size: 4MB (FS:2MB OTA:~1019KB)
+     - Debug Port: Disabled
+     - Debug Level: None
+     - IwIP Variant: v2 Lower Memory
+     - VTables: Flash
+     - Exceptions: Enabled
+     - Erase Flash: Only Sketch
+   
+   ![Seleção da placa NodeMCU](https://i.imgur.com/JxTLQTh.png)
+
+### Instalação das Bibliotecas
+
+1. Vá para Sketch > Incluir Biblioteca > Gerenciar Bibliotecas
+2. Instale as seguintes bibliotecas:
+   - **PubSubClient** (por Nick O'Leary)
+   - **ESP8266WebServer** (já incluída no pacote ESP8266)
+
+### Preparação do Código
+
+1. Crie um novo sketch na Arduino IDE
+2. Copie todo o conteúdo do arquivo `main.cpp` para o sketch
+3. Salve o sketch com um nome descritivo (ex: ESP8266_MQTT_Sensor)
+
+### Compilação e Upload
+
+1. Conecte o ESP8266 ao computador via USB
+2. Selecione a porta correta em Ferramentas > Porta
+3. Clique no botão "Verificar" para compilar
+4. Clique no botão "Carregar" para fazer o upload para o ESP8266
+5. Abra o Monitor Serial (Ferramentas > Monitor Serial) e configure para 115200 baud
+
+### Solução de Problemas
+
+- **Erro de compilação**: Verifique se todas as bibliotecas estão instaladas
+- **Erro de upload**: Verifique se a placa está conectada e a porta correta está selecionada
+- **Modo de boot**: Se o upload falhar, tente pressionar o botão FLASH durante o início do upload
 
 ## 🛠️ Personalização
 

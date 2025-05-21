@@ -7,7 +7,7 @@
 #define TRIGGER 5
 #define READ 18
 #define SWITCH LED_BUILTIN
-#define RELAY_PIN 6  // Pino para o relé
+#define RELAY_PIN D1  // Pino para o relé
 #define FLASH_BUTTON 0 // GPIO0 normalmente é o botão FLASH no ESP8266
 
 // --- Protótipos de funções auxiliares ---
