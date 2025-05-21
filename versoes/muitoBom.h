@@ -15,6 +15,7 @@ void stopAPMode();
 void handleFlashButton();
 void blinkLED();
 void setupConfigServerRoutes();
+void publishIPAddress(); // Nova função para publicar IP
 
 // --- Variáveis para controle de modo AP e LED ---
 ESP8266WebServer configServer(80);
@@ -32,12 +33,34 @@ const int mqttPort = 1883;
 const char* topicBase = "meuESP32/testeBasico/";
 const char* topicSubscribe = "meuESP32/testeBasico/entrada";
 const char* topicPublish = "meuESP8266/testeBasico/saida";
+const char* topicIP = "meuESP8266/IPnaRede"; // Tópico específico para IP
 
 // --- Variáveis Globais ---
 WiFiClient espClient;
 PubSubClient client(espClient);
 unsigned long lastMsg = 0;
 const long interval = 1000; // Envio a cada 1 segundos
+
+// --- Função para publicar o IP no MQTT ---
+void publishIPAddress() {
+  if (WiFi.status() == WL_CONNECTED) {
+    String ip = WiFi.localIP().toString();
+    Serial.print("Publicando IP: ");
+    Serial.println(ip);
+    
+    // Tenta publicar o IP
+    if (client.connected()) {
+      client.publish(topicIP, ip.c_str());
+    } else {
+      // Se não estiver conectado ao MQTT, tenta conectar
+      String clientId = "ESP8266Client-" + String(random(0xffff), HEX);
+      if (client.connect(clientId.c_str())) {
+        client.publish(topicIP, ip.c_str());
+        client.subscribe(topicSubscribe);
+      }
+    }
+  }
+}
 
 // --- Funções EEPROM para Wi-Fi ---
 void saveWiFiToEEPROM(const char* ssid, const char* pass) {
@@ -70,11 +93,13 @@ bool connectWiFiFromEEPROM() {
     delay(200);
   }
   if (WiFi.status() == WL_CONNECTED) {
-    // Publica o IP atual no tópico meuESP8266/IPnaRede
-    if (client.connected()) {
-      String ip = WiFi.localIP().toString();
-      client.publish("meuESP8266/IPnaRede", ip.c_str());
-    }
+    Serial.print("Conectado ao WiFi. IP: ");
+    Serial.println(WiFi.localIP().toString());
+    
+    // Configura o servidor MQTT e publica o IP
+    client.setServer(mqttServer, mqttPort);
+    client.setCallback(callback);
+    publishIPAddress();
   }
   return WiFi.status() == WL_CONNECTED;
 }
@@ -90,6 +115,9 @@ void conectawifi() {
   Serial.println("\nWiFi conectado!");
   Serial.print("IP: ");
   Serial.println(WiFi.localIP());
+  
+  // Publica o IP após conectar
+  publishIPAddress();
 }
 
 // --- Callback para mensagens recebidas ---
@@ -126,9 +154,9 @@ void reconnect() {
       Serial.println("Conectado!");
       client.publish(topicPublish, "ESP32 Online");
       client.subscribe(topicSubscribe);
+      
       // Publica o IP atual no tópico meuESP8266/IPnaRede
-      String ip = WiFi.localIP().toString();
-      client.publish("meuESP8266/IPnaRede", ip.c_str());
+      publishIPAddress();
     } else {
       Serial.print("Falhou, rc=");
       Serial.print(client.state());
@@ -172,10 +200,10 @@ void setup() {
 
   // Semente para ID aleatório
   randomSeed(micros());
-  // Se já estiver conectado ao Wi-Fi e MQTT, publica o IP
-  if (WiFi.status() == WL_CONNECTED && client.connected()) {
-    String ip = WiFi.localIP().toString();
-    client.publish("meuESP8266/IPnaRede", ip.c_str());
+  
+  // Publica o IP se estiver conectado
+  if (WiFi.status() == WL_CONNECTED) {
+    publishIPAddress();
   }
 }
 

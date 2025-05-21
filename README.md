@@ -15,6 +15,7 @@ O arquivo `muitoBom.h` é o componente principal do projeto e oferece as seguint
 ### 2. Comunicação MQTT
 - **Conexão com Broker**: Conecta-se ao broker MQTT público (test.mosquitto.org)
 - **Publicação de Dados**: Envia leituras do sensor ultrassônico periodicamente
+- **Publicação de IP**: Publica automaticamente o IP no tópico "meuESP8266/IPnaRede" ao conectar
 - **Recebimento de Comandos**: Processa comandos "LIGAR" e "DESLIGAR" para controlar saídas
 - **Reconexão Automática**: Gerencia reconexões em caso de falha
 
