@@ -43,12 +43,18 @@ Sistema IoT baseado em ESP8266 com comunicação MQTT, servidor web para configu
 - **Comunicação MQTT**: LED pisca brevemente ao enviar/receber dados
 - **Lógica Invertida**: No ESP8266, o LED_BUILTIN acende com LOW e apaga com HIGH
 
+### Controle de Relé Baseado em Distância
+- **Acionamento Automático**: O relé é acionado quando a distância medida é menor que o limite mínimo
+- **Desligamento Automático**: O relé é desligado quando a distância medida é maior que o limite máximo
+- **Limites Configuráveis**: Os limites mínimo e máximo podem ser alterados via MQTT
+- **Monitoramento**: O estado atual do relé é publicado no tópico `meuESP8266/relay`
+
 ## 🔌 Hardware
 
 ### Componentes Necessários
 - NodeMCU ESP8266 ou compatível
 - Sensor ultrassônico HC-SR04
-- LED ou relé para saída
+- Relé para controle baseado em distância
 - Cabos de conexão
 
 ### Mapeamento de Pinos
@@ -58,6 +64,7 @@ Sistema IoT baseado em ESP8266 com comunicação MQTT, servidor web para configu
 | Trigger (Sensor) | GPIO5 | D1 | Saída para trigger do sensor |
 | Echo (Sensor) | GPIO18/GPIO4 | D2 | Entrada para echo do sensor |
 | LED Integrado | GPIO2 | LED_BUILTIN | Indicador de status do sistema |
+| Relé | GPIO5 | D1 | Controle baseado na distância |
 | Botão FLASH | GPIO0 | FLASH | Reset de configurações |
 
 > **Nota sobre o LED_BUILTIN**: O LED integrado no ESP8266 tem lógica invertida - ele acende quando o pino está em LOW (0) e apaga quando está em HIGH (1). O código foi adaptado para considerar esta característica.
@@ -136,7 +143,7 @@ monitor_speed = 115200
    - Tópico: `meuESP8266/saida`
    - QoS: 0
 
-2. **Controle do LED/Relé**:
+2. **Controle do LED**:
    - Tipo: Switch
    - Nome: Controle LED
    - Tópico: `meuESP8266/entrada`
@@ -144,16 +151,36 @@ monitor_speed = 115200
    - Valor OFF: `DESLIGAR`
    - QoS: 0
 
-3. **Monitoramento do IP**:
+3. **Controle do Relé**:
+   - Tipo: Switch
+   - Nome: Controle Relé
+   - Tópico: `meuESP8266/entrada`
+   - Valor ON: `LIGAR_RELE`
+   - Valor OFF: `DESLIGAR_RELE`
+   - QoS: 0
+
+4. **Estado do Relé**:
+   - Tipo: Text
+   - Nome: Estado do Relé
+   - Tópico: `meuESP8266/relay`
+   - QoS: 0
+
+5. **Monitoramento do IP**:
    - Tipo: Text
    - Nome: IP do ESP8266
    - Tópico: `meuESP8266/IPnaRede`
    - QoS: 0
 
+### Configuração de Limites de Distância
+- Para alterar o limite mínimo, envie `MIN:valor` para o tópico `meuESP8266/entrada`
+- Para alterar o limite máximo, envie `MAX:valor` para o tópico `meuESP8266/entrada`
+- Exemplo: `MIN:5.0` define o limite mínimo para 5 cm
+
 ### Uso
 1. Conecte ao broker (botão no canto superior direito)
 2. Os painéis mostrarão os dados recebidos do ESP8266
-3. Use o switch para enviar comandos LIGAR/DESLIGAR
+3. Use os switches para enviar comandos LIGAR/DESLIGAR
+4. Envie comandos MIN: e MAX: para configurar os limites de distância
 
 ## 🛠️ Personalização
 
@@ -162,4 +189,5 @@ Para adaptar o projeto às suas necessidades:
 - **Broker MQTT**: Altere `mqttServer` e `mqttPort` para seu próprio broker
 - **Tópicos MQTT**: Modifique `topicBase`, `topicSubscribe` e `topicPublish`
 - **Intervalo de Leitura**: Ajuste `interval` para mudar a frequência de leitura
+- **Limites de Distância**: Modifique `minDistance` e `maxDistance` para ajustar os limites de acionamento do relé
 - **Pinos**: Modifique as definições de pinos conforme seu hardware

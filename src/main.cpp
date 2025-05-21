@@ -7,6 +7,7 @@
 #define TRIGGER 5
 #define READ 18
 #define SWITCH LED_BUILTIN
+#define RELAY_PIN D1  // Pino para o relé
 #define FLASH_BUTTON 0 // GPIO0 normalmente é o botão FLASH no ESP8266
 
 // --- Protótipos de funções auxiliares ---
@@ -34,12 +35,18 @@ const char* topicBase = "meuESP8266/";
 const char* topicSubscribe = "meuESP8266/entrada";
 const char* topicPublish = "meuESP8266/saida";
 const char* topicIP = "meuESP8266/IPnaRede"; // Tópico específico para IP
+const char* topicRelay = "meuESP8266/relay"; // Tópico para estado do relé
 
 // --- Variáveis Globais ---
 WiFiClient espClient;
 PubSubClient client(espClient);
 unsigned long lastMsg = 0;
 const long interval = 1000; // Envio a cada 1 segundos
+
+// --- Variáveis para controle do relé baseado na distância ---
+float minDistance = 10.0;  // Distância mínima em cm (liga o relé)
+float maxDistance = 50.0;  // Distância máxima em cm (desliga o relé)
+bool relayState = false;   // Estado atual do relé
 
 // --- Função para publicar o IP no MQTT ---
 void publishIPAddress() {
@@ -141,6 +148,20 @@ void callback(char* topic, byte* payload, unsigned int length) {
       digitalWrite(SWITCH, LOW);  // Liga o LED (lógica invertida)
     } else if (message == "DESLIGAR") {
       digitalWrite(SWITCH, HIGH); // Desliga o LED (lógica invertida)
+    } else if (message == "LIGAR_RELE") {
+      digitalWrite(RELAY_PIN, HIGH);
+      relayState = true;
+      client.publish(topicRelay, "ON");
+    } else if (message == "DESLIGAR_RELE") {
+      digitalWrite(RELAY_PIN, LOW);
+      relayState = false;
+      client.publish(topicRelay, "OFF");
+    } else if (message.startsWith("MIN:")) {
+      minDistance = message.substring(4).toFloat();
+      client.publish(topicRelay, ("MIN:" + String(minDistance)).c_str());
+    } else if (message.startsWith("MAX:")) {
+      maxDistance = message.substring(4).toFloat();
+      client.publish(topicRelay, ("MAX:" + String(maxDistance)).c_str());
     }
   }
 }
@@ -184,7 +205,9 @@ void setup() {
   pinMode(READ, INPUT);
   pinMode(FLASH_BUTTON, INPUT_PULLUP);
   pinMode(SWITCH, OUTPUT);
+  pinMode(RELAY_PIN, OUTPUT);
   digitalWrite(SWITCH, HIGH); // LED desligado inicialmente (lógica invertida)
+  digitalWrite(RELAY_PIN, LOW); // Relé desligado inicialmente
 
   setupConfigServerRoutes(); // Sempre define as rotas
 
@@ -234,15 +257,25 @@ void loop() {
     Serial.print("Distância: ");
     Serial.println(distancia);
     
+    // Controle do relé baseado na distância
+    if (distancia <= minDistance && !relayState) {
+      digitalWrite(RELAY_PIN, HIGH);
+      relayState = true;
+      client.publish(topicRelay, "ON");
+      Serial.println("Relé LIGADO - Distância mínima atingida");
+    } else if (distancia >= maxDistance && relayState) {
+      digitalWrite(RELAY_PIN, LOW);
+      relayState = false;
+      client.publish(topicRelay, "OFF");
+      Serial.println("Relé DESLIGADO - Distância máxima atingida");
+    }
+    
     // Publica distância
     String mensagem = String(distancia, 2); // 2 casas decimais
     client.publish(topicPublish, mensagem.c_str());
     
     // Pisca LED ao publicar no MQTT
     blinkLED();
-    
-    // Não controla o LED baseado na distância para manter o comportamento desejado
-    // Removido o controle baseado na distância para que o LED só pisque ao publicar
   }
 
   // Exemplo de uso do blinkLED() em publish/receive:
@@ -304,6 +337,9 @@ void setupConfigServerRoutes() {
     html += "<li>SSID: " + WiFi.SSID() + "</li>";
     html += "<li>RSSI: " + String(WiFi.RSSI()) + " dBm</li>";
     html += "<li>MQTT conectado: " + String(client.connected() ? "Sim" : "Não") + "</li>";
+    html += "<li>Estado do Relé: " + String(relayState ? "LIGADO" : "DESLIGADO") + "</li>";
+    html += "<li>Distância Min: " + String(minDistance) + " cm</li>";
+    html += "<li>Distância Max: " + String(maxDistance) + " cm</li>";
     html += "<li>Memória livre: " + String(ESP.getFreeHeap()) + " bytes</li>";
     html += "<li>Tempo desde boot: " + String(millis() / 1000) + " s</li>";
     html += "</ul></div></body></html>";
