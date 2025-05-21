@@ -63,7 +63,7 @@ Sistema IoT baseado em ESP8266 com comunicação MQTT, servidor web para configu
 | Componente | Pino ESP8266 | Pino NodeMCU | Função |
 |------------|--------------|--------------|--------|
 | Trigger (Sensor) | GPIO4 | D2 | Saída para trigger do sensor |
-| Echo (Sensor) | GPIO0 | D3 | Entrada para echo do sensor |
+| Echo (Sensor) | GPIO14 | D5 | Entrada para echo do sensor |
 | LED Integrado | GPIO2 | LED_BUILTIN | Indicador de status do sistema |
 | Relé | GPIO5 | D1 | Controle baseado na distância |
 | Botão FLASH | GPIO0 | FLASH | Reset de configurações |

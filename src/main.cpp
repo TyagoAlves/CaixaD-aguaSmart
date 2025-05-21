@@ -5,7 +5,7 @@
 
 // --- Definições de pinos ---
 #define TRIGGER D2  // GPIO4 - Pino para o trigger do sensor ultrassônico
-#define READ D3      // GPIO0 - Pino para o echo do sensor ultrassônico
+#define READ D5      // GPIO14 - Pino para o echo do sensor ultrassônico
 #define SWITCH LED_BUILTIN
 #define RELAY_PIN D1  // GPIO5 - Pino para o relé
 #define FLASH_BUTTON 0 // GPIO0 normalmente é o botão FLASH no ESP8266
