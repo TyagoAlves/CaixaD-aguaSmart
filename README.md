@@ -36,6 +36,13 @@ Sistema IoT baseado em ESP8266 com comunicação MQTT, servidor web para configu
 - Controle automático baseado nas leituras
 - Página de depuração em `/debug` com informações em tempo real
 
+### Indicação Visual com LED
+- **LED_BUILTIN** usado como indicador de status
+- **Modo AP**: LED permanece aceso continuamente
+- **Modo Normal**: LED normalmente apagado
+- **Comunicação MQTT**: LED pisca brevemente ao enviar/receber dados
+- **Lógica Invertida**: No ESP8266, o LED_BUILTIN acende com LOW e apaga com HIGH
+
 ## 🔌 Hardware
 
 ### Componentes Necessários
@@ -50,10 +57,10 @@ Sistema IoT baseado em ESP8266 com comunicação MQTT, servidor web para configu
 |------------|--------------|--------------|--------|
 | Trigger (Sensor) | GPIO5 | D1 | Saída para trigger do sensor |
 | Echo (Sensor) | GPIO18/GPIO4 | D2 | Entrada para echo do sensor |
-| LED/Relé | GPIO16 | D0 | Controle de saída |
+| LED Integrado | GPIO2 | LED_BUILTIN | Indicador de status do sistema |
 | Botão FLASH | GPIO0 | FLASH | Reset de configurações |
 
-> **Nota**: O ESP8266 usa numeração GPIO diferente da numeração física dos pinos.
+> **Nota sobre o LED_BUILTIN**: O LED integrado no ESP8266 tem lógica invertida - ele acende quando o pino está em LOW (0) e apaga quando está em HIGH (1). O código foi adaptado para considerar esta característica.
 
 ## 💻 Software
 
@@ -106,6 +113,10 @@ monitor_speed = 115200
 ### Monitoramento
 - Acesse http://[IP-DO-ESP]/debug para ver o status do sistema
 - Para resetar as configurações, mantenha o botão FLASH pressionado por 3 segundos
+- Observe o LED integrado para entender o status:
+  - **Sempre aceso**: Modo AP ativo (aguardando configuração)
+  - **Apagado**: Conectado a uma rede WiFi
+  - **Piscando**: Enviando ou recebendo dados via MQTT
 
 ## 📱 Uso com MQTT Panel
 
@@ -128,7 +139,7 @@ monitor_speed = 115200
 2. **Controle do LED/Relé**:
    - Tipo: Switch
    - Nome: Controle LED
-   - Tópico: `meuESP32/testeBasico/entrada`
+   - Tópico: `meuESP8266/entrada`
    - Valor ON: `LIGAR`
    - Valor OFF: `DESLIGAR`
    - QoS: 0

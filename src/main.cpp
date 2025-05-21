@@ -138,9 +138,9 @@ void callback(char* topic, byte* payload, unsigned int length) {
   // Exemplo de comando recebido
   if (strcmp(topic, topicSubscribe) == 0) {
     if (message == "LIGAR") {
-      digitalWrite(SWITCH, HIGH);
+      digitalWrite(SWITCH, LOW);  // Liga o LED (lógica invertida)
     } else if (message == "DESLIGAR") {
-      digitalWrite(SWITCH, LOW);
+      digitalWrite(SWITCH, HIGH); // Desliga o LED (lógica invertida)
     }
   }
 }
@@ -184,7 +184,7 @@ void setup() {
   pinMode(READ, INPUT);
   pinMode(FLASH_BUTTON, INPUT_PULLUP);
   pinMode(SWITCH, OUTPUT);
-  digitalWrite(SWITCH, LOW);
+  digitalWrite(SWITCH, HIGH); // LED desligado inicialmente (lógica invertida)
 
   setupConfigServerRoutes(); // Sempre define as rotas
 
@@ -214,7 +214,7 @@ void loop() {
   
   // Se estiver em modo AP, mantenha o LED sempre aceso
   if (apMode) {
-    digitalWrite(SWITCH, HIGH); // LED sempre aceso no AP
+    digitalWrite(SWITCH, LOW); // LED sempre aceso no AP (lógica invertida)
     return; // Sai da função para não executar o resto do código
   }
 
@@ -224,7 +224,7 @@ void loop() {
   client.loop();
 
   // Mantém o LED desligado quando conectado (só pisca ao publicar/receber)
-  digitalWrite(SWITCH, LOW);
+  digitalWrite(SWITCH, HIGH); // LED desligado (lógica invertida)
 
   // A cada intervalo, envia leitura
   unsigned long now = millis();
@@ -317,14 +317,14 @@ void startAPMode() {
   WiFi.softAP("ESP8266_Config", "12345678");
   setupConfigServerRoutes();
   configServer.begin();
-  digitalWrite(SWITCH, HIGH); // LED sempre aceso no AP
+  digitalWrite(SWITCH, LOW); // LED sempre aceso no AP (lógica invertida)
   Serial.println("Modo AP ativado - LED permanecerá aceso");
 }
 void stopAPMode() {
   apMode = false;
   configServer.stop();
   WiFi.softAPdisconnect(true);
-  digitalWrite(SWITCH, LOW); // Desliga o LED ao sair do modo AP
+  digitalWrite(SWITCH, HIGH); // Desliga o LED ao sair do modo AP (lógica invertida)
   Serial.println("Saindo do modo AP - LED será controlado pelo modo normal");
 }
 
@@ -346,9 +346,9 @@ void handleFlashButton() {
 void blinkLED() {
   // Não pisca o LED se estiver em modo AP (já está sempre aceso)
   if (!apMode) {
-    digitalWrite(SWITCH, HIGH);
+    digitalWrite(SWITCH, LOW);  // Liga o LED (lógica invertida)
     delay(80);
-    digitalWrite(SWITCH, LOW);
+    digitalWrite(SWITCH, HIGH); // Desliga o LED (lógica invertida)
     delay(80);
   }
 }
