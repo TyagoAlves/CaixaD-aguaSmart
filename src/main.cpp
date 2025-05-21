@@ -145,11 +145,7 @@ void callback(char* topic, byte* payload, unsigned int length) {
 
   // Exemplo de comando recebido
   if (strcmp(topic, topicSubscribe) == 0) {
-    if (message == "LIGAR") {
-      digitalWrite(SWITCH, LOW);  // Liga o LED (lógica invertida)
-    } else if (message == "DESLIGAR") {
-      digitalWrite(SWITCH, HIGH); // Desliga o LED (lógica invertida)
-    } else if (message == "LIGAR_RELE") {
+    if (message == "LIGAR_RELE") {
       digitalWrite(RELAY_PIN, HIGH);
       relayState = true;
       client.publish(topicRelay, "ON");

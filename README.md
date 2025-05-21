@@ -29,7 +29,7 @@ Sistema IoT baseado em ESP8266 com comunicação MQTT, servidor web para configu
 - Conexão com broker público (test.mosquitto.org)
 - Publicação de leituras do sensor no tópico `meuESP8266/saida`
 - Publicação automática do IP no tópico `meuESP8266/IPnaRede`
-- Recebimento de comandos `LIGAR`/`DESLIGAR` para controle
+- Controle do relé via comandos MQTT
 - Reconexão automática em caso de falha
 
 ### Sensor Ultrassônico e Depuração
@@ -144,15 +144,9 @@ monitor_speed = 115200
    - Tópico: `meuESP8266/saida`
    - QoS: 0
 
-2. **Controle do LED**:
-   - Tipo: Switch
-   - Nome: Controle LED
-   - Tópico: `meuESP8266/entrada`
-   - Valor ON: `LIGAR`
-   - Valor OFF: `DESLIGAR`
-   - QoS: 0
 
-3. **Controle do Relé**:
+
+2. **Controle do Relé**:
    - Tipo: Switch
    - Nome: Controle Relé
    - Tópico: `meuESP8266/entrada`
@@ -160,13 +154,13 @@ monitor_speed = 115200
    - Valor OFF: `DESLIGAR_RELE`
    - QoS: 0
 
-4. **Estado do Relé**:
+3. **Estado do Relé**:
    - Tipo: Text
    - Nome: Estado do Relé
    - Tópico: `meuESP8266/relay`
    - QoS: 0
 
-5. **Monitoramento do IP**:
+4. **Monitoramento do IP**:
    - Tipo: Text
    - Nome: IP do ESP8266
    - Tópico: `meuESP8266/IPnaRede`
@@ -180,7 +174,7 @@ monitor_speed = 115200
 ### Uso
 1. Conecte ao broker (botão no canto superior direito)
 2. Os painéis mostrarão os dados recebidos do ESP8266
-3. Use os switches para enviar comandos LIGAR/DESLIGAR
+3. Use o switch para controlar o relé
 4. Envie comandos MIN: e MAX: para configurar os limites de distância
 
 ## 🔌 Uso com Arduino IDE
