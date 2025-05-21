@@ -67,8 +67,11 @@ PlatformIO é um ecossistema de desenvolvimento para IoT que facilita o trabalho
 ### Instalação do PlatformIO
 
 1. **Instale o Visual Studio Code**: Baixe e instale o [VS Code](https://code.visualstudio.com/)
+   
    **Ou instale usando Winget
-   ```winget install --id Microsoft.VisualStudioCode -e```
+   
+   ```iniwinget install --id Microsoft.VisualStudioCode -e```
+   
 3. **Instale a Extensão PlatformIO**: Abra o VS Code, vá para Extensions (Ctrl+Shift+X) e busque por "PlatformIO"
 4. **Reinicie o VS Code** após a instalação
 
