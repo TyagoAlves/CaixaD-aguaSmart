@@ -1,17 +1,8 @@
-#include <ESP8266WiFi.h>
-#include <PubSubClient.h>
-#include <EEPROM.h>
-#include <ESP8266WebServer.h>
-#include "version_manager.h" // Gerenciador de versões
+#ifndef DEBUG_VERSION_H
+#define DEBUG_VERSION_H
 
-// --- Definições de pinos ---
-#define TRIGGER 5
-#define READ 18
-#define SWITCH 16
-#define FLASH_BUTTON 0 // GPIO0 normalmente é o botão FLASH no ESP8266
-
-#ifdef VERSION_BASIC
-// Código da versão básica (main.cpp original)
+// Este arquivo contém o código da versão com debug avançado
+// Baseado no arquivo "pagina debug boa 15-54 20-05-2025.ino"
 
 // --- Protótipos de funções auxiliares ---
 void startAPMode();
@@ -162,6 +153,9 @@ void setup() {
   pinMode(SWITCH, OUTPUT);
   digitalWrite(SWITCH, LOW);
 
+  // Exibe informações da versão
+  printVersionInfo();
+
   setupConfigServerRoutes(); // Sempre define as rotas
 
   if (!connectWiFiFromEEPROM()) {
@@ -218,9 +212,6 @@ void loop() {
       digitalWrite(SWITCH, LOW);
     }
   }
-
-  // Exemplo de uso do blinkLED() em publish/receive:
-  // blinkLED(); // Chame após publicar ou receber MQTT
 }
 
 // --- Funções para Wi-Fi config portal ---
@@ -280,6 +271,8 @@ void setupConfigServerRoutes() {
     html += "<li>MQTT conectado: " + String(client.connected() ? "Sim" : "Não") + "</li>";
     html += "<li>Memória livre: " + String(ESP.getFreeHeap()) + " bytes</li>";
     html += "<li>Tempo desde boot: " + String(millis() / 1000) + " s</li>";
+    html += "<li>Versão: " + String(VERSION_NAME) + "</li>";
+    html += "<li>Descrição: " + String(VERSION_DESC) + "</li>";
     html += "</ul></div></body></html>";
     configServer.send(200, "text/html; charset=utf-8", html);
   });
@@ -321,28 +314,4 @@ void blinkLED() {
   delay(80);
 }
 
-#endif // VERSION_BASIC
-
-#ifdef VERSION_DEBUG
-// Código da versão com debug avançado (pagina debug boa 15-54 20-05-2025.ino)
-// Inclua aqui o código do arquivo pagina debug boa 15-54 20-05-2025.ino
-// Para ativar esta versão, edite version_manager.h
-#include "debug_version.h"
-#endif
-
-#ifdef VERSION_FULL
-// Código da versão completa (vaidarcerto.ino)
-// Inclua aqui o código do arquivo vaidarcerto.ino
-// Para ativar esta versão, edite version_manager.h
-#include "full_version.h"
-#endif
-
-// Informação de versão exibida na inicialização
-void printVersionInfo() {
-  Serial.println("\n=================================");
-  Serial.println("ESP8266 IoT System");
-  Serial.print("Versão: ");
-  Serial.println(VERSION_NAME);
-  Serial.println(VERSION_DESC);
-  Serial.println("=================================\n");
-}
+#endif // DEBUG_VERSION_H
