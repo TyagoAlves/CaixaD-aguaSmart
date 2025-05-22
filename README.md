@@ -26,11 +26,13 @@ Sistema IoT baseado em ESP8266 com comunicação MQTT, servidor web para configu
 - Reset via botão FLASH (pressione por 3 segundos)
 
 ### Comunicação MQTT
-- Conexão com broker público (test.mosquitto.org)
+- Conexão com broker público (test.mosquitto.org) com keep-alive de 2 minutos
 - Publicação de leituras do sensor no tópico `meuESP8266/saida`
 - Publicação automática do IP no tópico `meuESP8266/IPnaRede` a cada minuto
+- Publicação periódica do estado do relé a cada 5 segundos no tópico `meuESP8266/relay`
 - Controle do relé via comandos MQTT com atualização em tempo real do estado
-- Reconexão automática em caso de falha
+- Reconexão automática em caso de falha de conexão WiFi ou MQTT
+- ID de cliente único baseado no chip ID para evitar desconexões
 
 ### Sensor Ultrassônico e Depuração
 - Medição de distâncias com sensor HC-SR04
@@ -48,7 +50,9 @@ Sistema IoT baseado em ESP8266 com comunicação MQTT, servidor web para configu
 - **Acionamento Automático**: O relé é acionado quando a distância medida é menor que o limite mínimo
 - **Desligamento Automático**: O relé é desligado quando a distância medida é maior que o limite máximo
 - **Limites Configuráveis**: Os limites mínimo e máximo podem ser alterados via MQTT
-- **Monitoramento em Tempo Real**: O estado atual do relé é publicado no tópico `meuESP8266/relay` sempre que há mudança, seja por comando MQTT ou por acionamento automático
+- **Monitoramento em Tempo Real**: O estado atual do relé é publicado no tópico `meuESP8266/relay` sempre que há mudança
+- **Publicação Periódica**: O estado do relé é publicado periodicamente a cada 5 segundos para garantir sincronização
+- **Mensagens Retidas**: As mensagens de estado do relé são marcadas como "retidas" no broker para persistência
 
 ## 🔌 Hardware
 
@@ -212,7 +216,7 @@ Se preferir usar a Arduino IDE em vez do PlatformIO, siga estas instruções:
      - Exceptions: Enabled
      - Erase Flash: Only Sketch
    
-   ![Seleção da placa NodeMCU](https://i.imgur.com/JxTLQTh.png)
+   ![Seleção da placa NodeMCU](https://down-br.img.susercontent.com/file/8da4f352b2486d88cf666f7e86e912bc.webp)
 
 ### Instalação das Bibliotecas
 
@@ -240,6 +244,14 @@ Se preferir usar a Arduino IDE em vez do PlatformIO, siga estas instruções:
 - **Erro de compilação**: Verifique se todas as bibliotecas estão instaladas
 - **Erro de upload**: Verifique se a placa está conectada e a porta correta está selecionada
 - **Modo de boot**: Se o upload falhar, tente pressionar o botão FLASH durante o início do upload
+- **Problemas de conexão MQTT**: 
+  - Verifique se o broker está acessível (test.mosquitto.org pode ficar sobrecarregado)
+  - Considere usar um broker MQTT local como o Mosquitto ou HiveMQ
+  - Aumente o valor de `mqttKeepAlive` se a conexão cair frequentemente
+- **Estado do relé não atualiza**:
+  - Verifique os logs no Monitor Serial para confirmar que as mensagens estão sendo publicadas
+  - Certifique-se de que o aplicativo MQTT está inscrito no tópico correto
+  - Reinicie o aplicativo MQTT se ele não mostrar as atualizações
 
 ## 🛠️ Personalização
 
@@ -250,3 +262,5 @@ Para adaptar o projeto às suas necessidades:
 - **Intervalo de Leitura**: Ajuste `interval` para mudar a frequência de leitura
 - **Limites de Distância**: Modifique `minDistance` e `maxDistance` para ajustar os limites de acionamento do relé
 - **Pinos**: Modifique as definições de pinos conforme seu hardware
+- **Intervalos de Publicação**: Ajuste `ipPublishInterval` e `relayPublishInterval` para controlar a frequência de publicação
+- **Keep-Alive MQTT**: Modifique `mqttKeepAlive` para ajustar o tempo de keep-alive da conexão MQTT

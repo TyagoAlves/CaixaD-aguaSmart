@@ -17,6 +17,8 @@ void handleFlashButton();
 void blinkLED();
 void setupConfigServerRoutes();
 void publishIPAddress(); // Nova função para publicar IP
+void publishRelayState(); // Função para publicar estado do relé
+void checkWiFiConnection(); // Função para verificar conexão WiFi
 void callback(char* topic, byte* payload, unsigned int length); // Protótipo da função callback
 
 // --- Variáveis para controle de modo AP e LED ---
@@ -43,13 +45,19 @@ WiFiClient espClient;
 PubSubClient client(espClient);
 unsigned long lastMsg = 0;
 unsigned long lastIPPublish = 0;
+unsigned long lastWifiCheck = 0;
+unsigned long lastRelayPublish = 0;
 const long interval = 1000; // Envio a cada 1 segundo
 const long ipPublishInterval = 60000; // Envio do IP a cada 60 segundos (1 minuto)
+const long wifiCheckInterval = 30000; // Verificar WiFi a cada 30 segundos
+const long relayPublishInterval = 5000; // Publicar estado do relé a cada 5 segundos
+const int mqttKeepAlive = 120; // Keep-alive de 120 segundos (2 minutos)
 
 // --- Variáveis para controle do relé baseado na distância ---
 float minDistance = 10.0;  // Distância mínima em cm (liga o relé)
 float maxDistance = 50.0;  // Distância máxima em cm (desliga o relé)
 bool relayState = false;   // Estado atual do relé
+bool relayControlledByApp = false; // Indica se o relé está sendo controlado pelo app
 
 // --- Função para publicar o IP no MQTT ---
 void publishIPAddress() {
@@ -161,14 +169,22 @@ void callback(char* topic, byte* payload, unsigned int length) {
     if (message == "LIGAR_RELE") {
       digitalWrite(RELAY_PIN, HIGH);
       relayState = true;
+      relayControlledByApp = true; // Marca que o relé está sendo controlado pelo app
       bool published = client.publish(topicRelay, "ON", true); // Adiciona retained=true
       Serial.print("Relé LIGADO - Comando MQTT. Publicação: ");
       Serial.println(published ? "Sucesso" : "Falha");
     } else if (message == "DESLIGAR_RELE") {
       digitalWrite(RELAY_PIN, LOW);
       relayState = false;
+      relayControlledByApp = true; // Marca que o relé está sendo controlado pelo app
       bool published = client.publish(topicRelay, "OFF", true); // Adiciona retained=true
       Serial.print("Relé DESLIGADO - Comando MQTT. Publicação: ");
+      Serial.println(published ? "Sucesso" : "Falha");
+    } else if (message == "AUTO_RELE") {
+      relayControlledByApp = false; // Volta para o modo automático
+      Serial.println("Relé voltou para o modo automático");
+      bool published = client.publish(topicRelay, "AUTO", true);
+      Serial.print("Modo automático publicado: ");
       Serial.println(published ? "Sucesso" : "Falha");
     } else if (message.startsWith("MIN:")) {
       minDistance = message.substring(4).toFloat();
@@ -176,6 +192,52 @@ void callback(char* topic, byte* payload, unsigned int length) {
     } else if (message.startsWith("MAX:")) {
       maxDistance = message.substring(4).toFloat();
       client.publish(topicRelay, ("MAX:" + String(maxDistance)).c_str());
+    }
+  }
+}
+
+// --- Função para publicar o estado do relé ---
+void publishRelayState() {
+  if (!client.connected()) return;
+  
+  const char* state = relayState ? "ON" : "OFF";
+  bool success = false;
+  
+  // Tenta publicar até 3 vezes
+  for (int i = 0; i < 3 && !success; i++) {
+    success = client.publish(topicRelay, state, true);
+    if (!success) {
+      Serial.print("Falha ao publicar estado do relé, tentativa ");
+      Serial.println(i+1);
+      delay(100);
+    }
+  }
+  
+  Serial.print("Estado do relé publicado: ");
+  Serial.print(state);
+  Serial.print(" - ");
+  Serial.println(success ? "Sucesso" : "Falha após 3 tentativas");
+}
+
+// --- Verificar e reconectar WiFi ---
+void checkWiFiConnection() {
+  if (WiFi.status() != WL_CONNECTED) {
+    Serial.println("WiFi desconectado. Tentando reconectar...");
+    WiFi.reconnect();
+    
+    // Aguarda reconexão por até 10 segundos
+    unsigned long startAttempt = millis();
+    while (WiFi.status() != WL_CONNECTED && millis() - startAttempt < 10000) {
+      delay(500);
+      Serial.print(".");
+    }
+    
+    if (WiFi.status() == WL_CONNECTED) {
+      Serial.println("\nWiFi reconectado!");
+      Serial.print("IP: ");
+      Serial.println(WiFi.localIP());
+    } else {
+      Serial.println("\nFalha ao reconectar WiFi");
     }
   }
 }
@@ -189,12 +251,15 @@ void reconnect() {
     Serial.print(attempts);
     Serial.print(")...");
     
-    String clientId = "ESP8266Client-" + String(random(0xffff), HEX);
-    if (client.connect(clientId.c_str())) {
+    // Usar ID de cliente baseado no chip ID para evitar duplicação
+    String clientId = "ESP8266-" + String(ESP.getChipId(), HEX);
+    
+    // Conectar com keep-alive e last will testament
+    if (client.connect(clientId.c_str(), NULL, NULL, topicPublish, 0, true, "ESP8266 Offline", true)) {
       Serial.println("Conectado!");
       
       // Publica mensagem de status
-      bool statusPublished = client.publish(topicPublish, "ESP8266 Online");
+      bool statusPublished = client.publish(topicPublish, "ESP8266 Online", true);
       Serial.print("Status publicado: ");
       Serial.println(statusPublished ? "Sim" : "Não");
       
@@ -204,9 +269,7 @@ void reconnect() {
       Serial.println(subscribed ? "Sim" : "Não");
       
       // Publica o estado atual do relé
-      bool relayPublished = client.publish(topicRelay, relayState ? "ON" : "OFF", true);
-      Serial.print("Estado do relé publicado: ");
-      Serial.println(relayPublished ? "Sim" : "Não");
+      publishRelayState();
       
       // Publica o IP atual
       publishIPAddress();
@@ -232,131 +295,15 @@ float readDistanceCM() {
   return duration * 0.034 / 2;
 }
 
-// --- SETUP ---
-void setup() {
-  Serial.begin(115200);
-  pinMode(TRIGGER, OUTPUT);
-  pinMode(READ, INPUT);
-  pinMode(FLASH_BUTTON, INPUT_PULLUP);
-  pinMode(SWITCH, OUTPUT);
-  pinMode(RELAY_PIN, OUTPUT);
-  digitalWrite(SWITCH, HIGH); // LED desligado inicialmente (lógica invertida)
-  digitalWrite(RELAY_PIN, LOW); // Relé desligado inicialmente
-
-  setupConfigServerRoutes(); // Sempre define as rotas
-
-  if (!connectWiFiFromEEPROM()) {
-    startAPMode();
-  } else {
-    configServer.begin(); // Inicia o servidor web também no modo STA
+// --- Piscar o LED ---
+void blinkLED() {
+  // Não pisca o LED se estiver em modo AP (já está sempre aceso)
+  if (!apMode) {
+    digitalWrite(SWITCH, LOW);  // Liga o LED (lógica invertida)
+    delay(80);
+    digitalWrite(SWITCH, HIGH); // Desliga o LED (lógica invertida)
+    delay(80);
   }
-
-  // MQTT
-  client.setServer(mqttServer, mqttPort);
-  client.setCallback(callback);
-  
-  // Aumenta o tamanho do buffer para mensagens MQTT (padrão é 256 bytes)
-  client.setBufferSize(512);
-
-  // Semente para ID aleatório
-  randomSeed(micros());
-  
-  // Publica o IP se estiver conectado
-  if (WiFi.status() == WL_CONNECTED) {
-    publishIPAddress();
-    lastIPPublish = millis(); // Inicializa o contador de tempo para publicação do IP
-  }
-}
-
-// --- LOOP ---
-void loop() {
-  handleFlashButton();
-  configServer.handleClient(); // Sempre processa requisições HTTP
-  
-  // Se estiver em modo AP, mantenha o LED sempre aceso
-  if (apMode) {
-    digitalWrite(SWITCH, LOW); // LED sempre aceso no AP (lógica invertida)
-    return; // Sai da função para não executar o resto do código
-  }
-
-  // Verifica conexão MQTT e tenta reconectar se necessário
-  if (!client.connected()) {
-    Serial.println("Cliente MQTT desconectado no loop principal");
-    reconnect();
-  }
-  
-  // Processa mensagens MQTT recebidas
-  client.loop();
-
-  // Mantém o LED desligado quando conectado (só pisca ao publicar/receber)
-  digitalWrite(SWITCH, HIGH); // LED desligado (lógica invertida)
-
-  // A cada intervalo, envia leitura
-  unsigned long now = millis();
-  
-  // Publicação do IP a cada minuto
-  if (now - lastIPPublish > ipPublishInterval) {
-    lastIPPublish = now;
-    Serial.println("Intervalo de publicação do IP atingido");
-    publishIPAddress();
-  }
-  
-  // Forçar publicação do IP a cada 10 segundos durante os primeiros 2 minutos após inicialização
-  static bool initialPhase = true;
-  static unsigned long startTime = millis();
-  if (initialPhase && (now - startTime < 120000)) { // 2 minutos
-    if (now % 10000 < interval) { // A cada 10 segundos
-      Serial.println("Fase inicial: publicação frequente do IP");
-      publishIPAddress();
-    }
-  } else {
-    initialPhase = false;
-  }
-  
-  if (now - lastMsg > interval) {
-    lastMsg = now;
-    float distancia = readDistanceCM();
-    Serial.print("Distância: ");
-    Serial.println(distancia);
-    
-    // Controle do relé baseado na distância
-    bool oldRelayState = relayState;
-    if (distancia <= minDistance && !relayState) {
-      digitalWrite(RELAY_PIN, HIGH);
-      relayState = true;
-      Serial.println("Relé LIGADO - Distância mínima atingida");
-    } else if (distancia >= maxDistance && relayState) {
-      digitalWrite(RELAY_PIN, LOW);
-      relayState = false;
-      Serial.println("Relé DESLIGADO - Distância máxima atingida");
-    }
-    
-    // Publica o estado do relé se houve mudança
-    if (oldRelayState != relayState) {
-      if (client.connected()) {
-        client.publish(topicRelay, relayState ? "ON" : "OFF");
-        Serial.print("Publicando estado do relé: ");
-        Serial.println(relayState ? "ON" : "OFF");
-      }
-    }
-    
-    // Publica o estado do relé periodicamente, independente de mudança
-    if (now % 10000 < interval) { // A cada 10 segundos
-      if (client.connected()) {
-        client.publish(topicRelay, relayState ? "ON" : "OFF");
-      }
-    }
-    
-    // Publica distância
-    String mensagem = String(distancia, 2); // 2 casas decimais
-    client.publish(topicPublish, mensagem.c_str());
-    
-    // Pisca LED ao publicar no MQTT
-    blinkLED();
-  }
-
-  // Exemplo de uso do blinkLED() em publish/receive:
-  // blinkLED(); // Chame após publicar ou receber MQTT
 }
 
 // --- Funções para Wi-Fi config portal ---
@@ -415,6 +362,7 @@ void setupConfigServerRoutes() {
     html += "<li>RSSI: " + String(WiFi.RSSI()) + " dBm</li>";
     html += "<li>MQTT conectado: " + String(client.connected() ? "Sim" : "Não") + "</li>";
     html += "<li>Estado do Relé: " + String(relayState ? "LIGADO" : "DESLIGADO") + "</li>";
+    html += "<li>Controle do Relé: " + String(relayControlledByApp ? "APP" : "Automático") + "</li>";
     html += "<li>Distância Min: " + String(minDistance) + " cm</li>";
     html += "<li>Distância Max: " + String(maxDistance) + " cm</li>";
     html += "<li>Memória livre: " + String(ESP.getFreeHeap()) + " bytes</li>";
@@ -433,6 +381,7 @@ void startAPMode() {
   digitalWrite(SWITCH, LOW); // LED sempre aceso no AP (lógica invertida)
   Serial.println("Modo AP ativado - LED permanecerá aceso");
 }
+
 void stopAPMode() {
   apMode = false;
   configServer.stop();
@@ -456,12 +405,132 @@ void handleFlashButton() {
   }
 }
 
-void blinkLED() {
-  // Não pisca o LED se estiver em modo AP (já está sempre aceso)
-  if (!apMode) {
-    digitalWrite(SWITCH, LOW);  // Liga o LED (lógica invertida)
-    delay(80);
-    digitalWrite(SWITCH, HIGH); // Desliga o LED (lógica invertida)
-    delay(80);
+// --- SETUP ---
+void setup() {
+  Serial.begin(115200);
+  pinMode(TRIGGER, OUTPUT);
+  pinMode(READ, INPUT);
+  pinMode(FLASH_BUTTON, INPUT_PULLUP);
+  pinMode(SWITCH, OUTPUT);
+  pinMode(RELAY_PIN, OUTPUT);
+  digitalWrite(SWITCH, HIGH); // LED desligado inicialmente (lógica invertida)
+  digitalWrite(RELAY_PIN, LOW); // Relé desligado inicialmente
+
+  setupConfigServerRoutes(); // Sempre define as rotas
+
+  if (!connectWiFiFromEEPROM()) {
+    startAPMode();
+  } else {
+    configServer.begin(); // Inicia o servidor web também no modo STA
+  }
+
+  // MQTT
+  client.setServer(mqttServer, mqttPort);
+  client.setCallback(callback);
+  
+  // Aumenta o tamanho do buffer para mensagens MQTT (padrão é 256 bytes)
+  client.setBufferSize(512);
+  
+  // Configura o keep-alive para 120 segundos (2 minutos)
+  client.setKeepAlive(mqttKeepAlive);
+
+  // Semente para ID aleatório
+  randomSeed(micros());
+  
+  // Publica o IP se estiver conectado
+  if (WiFi.status() == WL_CONNECTED) {
+    publishIPAddress();
+    lastIPPublish = millis(); // Inicializa o contador de tempo para publicação do IP
+  }
+}
+
+// --- LOOP ---
+void loop() {
+  handleFlashButton();
+  configServer.handleClient(); // Sempre processa requisições HTTP
+  
+  // Se estiver em modo AP, mantenha o LED sempre aceso
+  if (apMode) {
+    digitalWrite(SWITCH, LOW); // LED sempre aceso no AP (lógica invertida)
+    return; // Sai da função para não executar o resto do código
+  }
+
+  unsigned long now = millis();
+  
+  // Verificar conexão WiFi periodicamente
+  if (now - lastWifiCheck > wifiCheckInterval) {
+    lastWifiCheck = now;
+    checkWiFiConnection();
+  }
+
+  // Verifica conexão MQTT e tenta reconectar se necessário
+  if (!client.connected()) {
+    Serial.println("Cliente MQTT desconectado no loop principal");
+    reconnect();
+  }
+  
+  // Processa mensagens MQTT recebidas
+  client.loop();
+
+  // Publicação periódica do estado do relé
+  if (now - lastRelayPublish > relayPublishInterval) {
+    lastRelayPublish = now;
+    publishRelayState();
+  }
+
+  // Publicação do IP a cada minuto
+  if (now - lastIPPublish > ipPublishInterval) {
+    lastIPPublish = now;
+    Serial.println("Intervalo de publicação do IP atingido");
+    publishIPAddress();
+  }
+  
+  // Forçar publicação do IP a cada 10 segundos durante os primeiros 2 minutos após inicialização
+  static bool initialPhase = true;
+  static unsigned long startTime = millis();
+  if (initialPhase && (now - startTime < 120000)) { // 2 minutos
+    if (now % 10000 < interval) { // A cada 10 segundos
+      Serial.println("Fase inicial: publicação frequente do IP");
+      publishIPAddress();
+    }
+  } else {
+    initialPhase = false;
+  }
+  
+  // Mantém o LED desligado quando conectado (só pisca ao publicar/receber)
+  digitalWrite(SWITCH, HIGH); // LED desligado (lógica invertida)
+
+  // A cada intervalo, envia leitura
+  if (now - lastMsg > interval) {
+    lastMsg = now;
+    float distancia = readDistanceCM();
+    Serial.print("Distância: ");
+    Serial.println(distancia);
+    
+    // Controle do relé baseado na distância SOMENTE se não estiver sendo controlado pelo app
+    if (!relayControlledByApp) {
+      bool oldRelayState = relayState;
+      if (distancia <= minDistance && !relayState) {
+        digitalWrite(RELAY_PIN, HIGH);
+        relayState = true;
+        Serial.println("Relé LIGADO - Distância mínima atingida");
+      } else if (distancia >= maxDistance && relayState) {
+        digitalWrite(RELAY_PIN, LOW);
+        relayState = false;
+        Serial.println("Relé DESLIGADO - Distância máxima atingida");
+      }
+      
+      // Publica o estado do relé se houve mudança
+      if (oldRelayState != relayState) {
+        publishRelayState();
+      }
+    }
+    
+    // Publica distância
+    String mensagem = String(distancia, 2); // 2 casas decimais
+    client.publish(topicPublish, mensagem.c_str());
+    
+    // Pisca LED ao publicar no MQTT
+    blinkLED();
   }
 }
