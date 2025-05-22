@@ -42,7 +42,9 @@ const char* topicRelay = "meuESP8266/relay"; // Tópico para estado do relé
 WiFiClient espClient;
 PubSubClient client(espClient);
 unsigned long lastMsg = 0;
-const long interval = 1000; // Envio a cada 1 segundos
+unsigned long lastIPPublish = 0;
+const long interval = 1000; // Envio a cada 1 segundo
+const long ipPublishInterval = 60000; // Envio do IP a cada 60 segundos (1 minuto)
 
 // --- Variáveis para controle do relé baseado na distância ---
 float minDistance = 10.0;  // Distância mínima em cm (liga o relé)
@@ -149,10 +151,12 @@ void callback(char* topic, byte* payload, unsigned int length) {
       digitalWrite(RELAY_PIN, HIGH);
       relayState = true;
       client.publish(topicRelay, "ON");
+      Serial.println("Relé LIGADO - Comando MQTT");
     } else if (message == "DESLIGAR_RELE") {
       digitalWrite(RELAY_PIN, LOW);
       relayState = false;
       client.publish(topicRelay, "OFF");
+      Serial.println("Relé DESLIGADO - Comando MQTT");
     } else if (message.startsWith("MIN:")) {
       minDistance = message.substring(4).toFloat();
       client.publish(topicRelay, ("MIN:" + String(minDistance)).c_str());
@@ -224,6 +228,7 @@ void setup() {
   // Publica o IP se estiver conectado
   if (WiFi.status() == WL_CONNECTED) {
     publishIPAddress();
+    lastIPPublish = millis(); // Inicializa o contador de tempo para publicação do IP
   }
 }
 
@@ -248,6 +253,13 @@ void loop() {
 
   // A cada intervalo, envia leitura
   unsigned long now = millis();
+  
+  // Publicação do IP a cada minuto
+  if (now - lastIPPublish > ipPublishInterval) {
+    lastIPPublish = now;
+    publishIPAddress();
+  }
+  
   if (now - lastMsg > interval) {
     lastMsg = now;
     float distancia = readDistanceCM();
@@ -255,16 +267,20 @@ void loop() {
     Serial.println(distancia);
     
     // Controle do relé baseado na distância
+    bool oldRelayState = relayState;
     if (distancia <= minDistance && !relayState) {
       digitalWrite(RELAY_PIN, HIGH);
       relayState = true;
-      client.publish(topicRelay, "ON");
       Serial.println("Relé LIGADO - Distância mínima atingida");
     } else if (distancia >= maxDistance && relayState) {
       digitalWrite(RELAY_PIN, LOW);
       relayState = false;
-      client.publish(topicRelay, "OFF");
       Serial.println("Relé DESLIGADO - Distância máxima atingida");
+    }
+    
+    // Publica o estado do relé se houve mudança
+    if (oldRelayState != relayState) {
+      client.publish(topicRelay, relayState ? "ON" : "OFF");
     }
     
     // Publica distância

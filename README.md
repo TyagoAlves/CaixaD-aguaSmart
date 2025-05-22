@@ -28,8 +28,8 @@ Sistema IoT baseado em ESP8266 com comunicação MQTT, servidor web para configu
 ### Comunicação MQTT
 - Conexão com broker público (test.mosquitto.org)
 - Publicação de leituras do sensor no tópico `meuESP8266/saida`
-- Publicação automática do IP no tópico `meuESP8266/IPnaRede`
-- Controle do relé via comandos MQTT
+- Publicação automática do IP no tópico `meuESP8266/IPnaRede` a cada minuto
+- Controle do relé via comandos MQTT com atualização em tempo real do estado
 - Reconexão automática em caso de falha
 
 ### Sensor Ultrassônico e Depuração
@@ -48,7 +48,7 @@ Sistema IoT baseado em ESP8266 com comunicação MQTT, servidor web para configu
 - **Acionamento Automático**: O relé é acionado quando a distância medida é menor que o limite mínimo
 - **Desligamento Automático**: O relé é desligado quando a distância medida é maior que o limite máximo
 - **Limites Configuráveis**: Os limites mínimo e máximo podem ser alterados via MQTT
-- **Monitoramento**: O estado atual do relé é publicado no tópico `meuESP8266/relay`
+- **Monitoramento em Tempo Real**: O estado atual do relé é publicado no tópico `meuESP8266/relay` sempre que há mudança, seja por comando MQTT ou por acionamento automático
 
 ## 🔌 Hardware
 
@@ -165,6 +165,7 @@ monitor_speed = 115200
    - Nome: IP do ESP8266
    - Tópico: `meuESP8266/IPnaRede`
    - QoS: 0
+   - Atualização: A cada minuto
 
 ### Configuração de Limites de Distância
 - Para alterar o limite mínimo, envie `MIN:valor` para o tópico `meuESP8266/entrada`
