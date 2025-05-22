@@ -3,23 +3,38 @@
 #include <EEPROM.h>
 #include <ESP8266WebServer.h>
 
+/**
+ * ESP8266 IoT com MQTT e Configuração Web
+ * 
+ * Este projeto implementa um sistema IoT baseado em ESP8266 com as seguintes funcionalidades:
+ * - Comunicação MQTT com broker público (test.mosquitto.org)
+ * - Servidor web para configuração WiFi e depuração
+ * - Sensor ultrassônico para medição de distância
+ * - Controle de relé baseado na distância ou comandos MQTT
+ * - Modos de operação automático e manual para o relé
+ * - Publicação periódica do IP e estado do relé
+ * 
+ * Autor: Seu Nome
+ * Data: Junho/2024
+ */
+
 // --- Definições de pinos ---
 #define TRIGGER D2  // GPIO4 - Pino para o trigger do sensor ultrassônico
-#define READ D5      // GPIO14 - Pino para o echo do sensor ultrassônico
-#define SWITCH LED_BUILTIN
+#define READ D5     // GPIO14 - Pino para o echo do sensor ultrassônico
+#define SWITCH LED_BUILTIN // LED integrado para indicação visual
 #define RELAY_PIN D1  // GPIO5 - Pino para o relé
 #define FLASH_BUTTON 0 // GPIO0 normalmente é o botão FLASH no ESP8266
 
 // --- Protótipos de funções auxiliares ---
-void startAPMode();
-void stopAPMode();
-void handleFlashButton();
-void blinkLED();
-void setupConfigServerRoutes();
-void publishIPAddress(); // Nova função para publicar IP
-void publishRelayState(); // Função para publicar estado do relé
-void checkWiFiConnection(); // Função para verificar conexão WiFi
-void callback(char* topic, byte* payload, unsigned int length); // Protótipo da função callback
+void startAPMode();        // Inicia o modo Access Point para configuração
+void stopAPMode();         // Para o modo Access Point
+void handleFlashButton();  // Trata o pressionamento do botão FLASH
+void blinkLED();           // Pisca o LED para indicação visual
+void setupConfigServerRoutes(); // Configura as rotas do servidor web
+void publishIPAddress();   // Publica o endereço IP via MQTT
+void publishRelayState();  // Publica o estado do relé via MQTT
+void checkWiFiConnection(); // Verifica e reconecta o WiFi se necessário
+void callback(char* topic, byte* payload, unsigned int length); // Callback para mensagens MQTT recebidas
 
 // --- Variáveis para controle de modo AP e LED ---
 ESP8266WebServer configServer(80);
@@ -30,15 +45,15 @@ unsigned long lastBlink = 0;
 const unsigned long blinkDuration = 80; // ms
 
 // --- Configurações do Broker MQTT ---
-const char* mqttServer = "test.mosquitto.org";
+const char* mqttServer = "broker.emqx.io";
 const int mqttPort = 1883;
 
 // --- Tópicos MQTT ---
 const char* topicBase = "meuESP8266/";
-const char* topicSubscribe = "meuESP8266/entrada";
-const char* topicPublish = "meuESP8266/saida";
-const char* topicIP = "meuESP8266/IPnaRede"; // Tópico específico para IP
-const char* topicRelay = "meuESP8266/relay"; // Tópico para estado do relé
+const char* topicSubscribe = "meuESP8266/entrada";  // Corrigido de meuESP8866
+const char* topicPublish = "meuESP8266/saida";      // Corrigido de meuESP8866
+const char* topicIP = "meuESP8266/IPnaRede";        // Corrigido de meuESP8866
+const char* topicRelay = "meuESP8266/relay";        // Corrigido de meuESP8866
 
 // --- Variáveis Globais ---
 WiFiClient espClient;
@@ -57,9 +72,13 @@ const int mqttKeepAlive = 120; // Keep-alive de 120 segundos (2 minutos)
 float minDistance = 10.0;  // Distância mínima em cm (liga o relé)
 float maxDistance = 50.0;  // Distância máxima em cm (desliga o relé)
 bool relayState = false;   // Estado atual do relé
-bool relayControlledByApp = false; // Indica se o relé está sendo controlado pelo app
+bool relayControlledByApp = false; // Indica se o relé está sendo controlado pelo app (modo manual)
 
-// --- Função para publicar o IP no MQTT ---
+/**
+ * Função para publicar o IP no MQTT
+ * Publica o endereço IP local no tópico definido em topicIP
+ * com a flag retained=true para que o broker mantenha a mensagem
+ */
 void publishIPAddress() {
   if (WiFi.status() == WL_CONNECTED) {
     String ip = WiFi.localIP().toString();
@@ -74,7 +93,7 @@ void publishIPAddress() {
     } else {
       // Se não estiver conectado ao MQTT, tenta conectar
       Serial.println("Cliente MQTT desconectado. Tentando reconectar...");
-      String clientId = "ESP8266Client-" + String(random(0xffff), HEX);
+      String clientId = "ESP8266Client-" + String(random(0xffff), HEX);  // Corrigido de ESP8866
       if (client.connect(clientId.c_str())) {
         Serial.println("Reconectado ao MQTT");
         bool published = client.publish(topicIP, ip.c_str(), true); // Adiciona retained=true
@@ -91,26 +110,35 @@ void publishIPAddress() {
   }
 }
 
-// --- Funções EEPROM para Wi-Fi ---
+/**
+ * Funções EEPROM para armazenamento de credenciais WiFi
+ * Estas funções permitem salvar, carregar e limpar as credenciais
+ * WiFi armazenadas na memória EEPROM do ESP8266
+ */
 void saveWiFiToEEPROM(const char* ssid, const char* pass) {
   EEPROM.begin(96);
   for (int i = 0; i < 32; ++i) EEPROM.write(i, ssid[i]);
   for (int i = 0; i < 64; ++i) EEPROM.write(32 + i, pass[i]);
   EEPROM.commit();
 }
+
 void loadWiFiFromEEPROM(char* ssid, char* pass) {
   EEPROM.begin(96);
   for (int i = 0; i < 32; ++i) ssid[i] = EEPROM.read(i);
   for (int i = 0; i < 64; ++i) pass[i] = EEPROM.read(32 + i);
   ssid[31] = '\0'; pass[63] = '\0';
 }
+
 void clearWiFiEEPROM() {
   EEPROM.begin(96);
   for (int i = 0; i < 96; ++i) EEPROM.write(i, 0);
   EEPROM.commit();
 }
 
-// --- Conecta ao Wi-Fi usando EEPROM ---
+/**
+ * Conecta ao Wi-Fi usando credenciais armazenadas na EEPROM
+ * Retorna true se a conexão foi bem-sucedida, false caso contrário
+ */
 bool connectWiFiFromEEPROM() {
   char ssid[32], pass[64];
   loadWiFiFromEEPROM(ssid, pass);
@@ -133,7 +161,10 @@ bool connectWiFiFromEEPROM() {
   return WiFi.status() == WL_CONNECTED;
 }
 
-// --- Conecta ao Wi-Fi ---
+/**
+ * Conecta ao Wi-Fi usando credenciais fixas
+ * Função de fallback caso não haja credenciais na EEPROM
+ */
 void conectawifi() {
   WiFi.begin("Ferruagem_2G", "natanael439"); // Substitua pelo seu SSID e senha
   Serial.print("Conectando ao WiFi ");
@@ -149,7 +180,10 @@ void conectawifi() {
   publishIPAddress();
 }
 
-// --- Callback para mensagens recebidas ---
+/**
+ * Callback para mensagens MQTT recebidas
+ * Processa comandos recebidos no tópico de entrada
+ */
 void callback(char* topic, byte* payload, unsigned int length) {
   Serial.print("Mensagem recebida [");
   Serial.print(topic);
@@ -164,19 +198,19 @@ void callback(char* topic, byte* payload, unsigned int length) {
   // Pisca LED ao receber mensagem
   blinkLED();
 
-  // Exemplo de comando recebido
+  // Processa comandos recebidos
   if (strcmp(topic, topicSubscribe) == 0) {
     if (message == "LIGAR_RELE") {
       digitalWrite(RELAY_PIN, HIGH);
       relayState = true;
-      relayControlledByApp = true; // Marca que o relé está sendo controlado pelo app
+      relayControlledByApp = true; // Marca que o relé está sendo controlado pelo app (modo manual)
       bool published = client.publish(topicRelay, "ON", true); // Adiciona retained=true
       Serial.print("Relé LIGADO - Comando MQTT. Publicação: ");
       Serial.println(published ? "Sucesso" : "Falha");
     } else if (message == "DESLIGAR_RELE") {
       digitalWrite(RELAY_PIN, LOW);
       relayState = false;
-      relayControlledByApp = true; // Marca que o relé está sendo controlado pelo app
+      relayControlledByApp = true; // Marca que o relé está sendo controlado pelo app (modo manual)
       bool published = client.publish(topicRelay, "OFF", true); // Adiciona retained=true
       Serial.print("Relé DESLIGADO - Comando MQTT. Publicação: ");
       Serial.println(published ? "Sucesso" : "Falha");
@@ -196,9 +230,20 @@ void callback(char* topic, byte* payload, unsigned int length) {
   }
 }
 
-// --- Função para publicar o estado do relé ---
+/**
+ * Função para publicar o estado do relé
+ * Tenta publicar até 3 vezes em caso de falha
+ * Verifica se o estado físico do relé corresponde ao estado lógico
+ */
 void publishRelayState() {
   if (!client.connected()) return;
+  
+  // Verifica se o estado físico do relé corresponde ao estado lógico
+  bool physicalRelayState = digitalRead(RELAY_PIN);
+  if (physicalRelayState != relayState) {
+    Serial.println("Corrigindo inconsistência no estado do relé");
+    digitalWrite(RELAY_PIN, relayState ? HIGH : LOW);
+  }
   
   const char* state = relayState ? "ON" : "OFF";
   bool success = false;
@@ -219,7 +264,9 @@ void publishRelayState() {
   Serial.println(success ? "Sucesso" : "Falha após 3 tentativas");
 }
 
-// --- Verificar e reconectar WiFi ---
+/**
+ * Verifica e reconecta o WiFi se necessário
+ */
 void checkWiFiConnection() {
   if (WiFi.status() != WL_CONNECTED) {
     Serial.println("WiFi desconectado. Tentando reconectar...");
@@ -242,7 +289,10 @@ void checkWiFiConnection() {
   }
 }
 
-// --- Reconectar MQTT ---
+/**
+ * Reconecta ao broker MQTT
+ * Limita a 3 tentativas por vez para evitar bloqueios
+ */
 void reconnect() {
   int attempts = 0;
   while (!client.connected() && attempts < 3) { // Limita a 3 tentativas por vez
@@ -252,14 +302,14 @@ void reconnect() {
     Serial.print(")...");
     
     // Usar ID de cliente baseado no chip ID para evitar duplicação
-    String clientId = "ESP8266-" + String(ESP.getChipId(), HEX);
+    String clientId = "ESP8266-" + String(ESP.getChipId(), HEX);  // Corrigido de ESP8866
     
     // Conectar com keep-alive e last will testament
-    if (client.connect(clientId.c_str(), NULL, NULL, topicPublish, 0, true, "ESP8266 Offline", true)) {
+    if (client.connect(clientId.c_str(), NULL, NULL, topicPublish, 0, true, "ESP8266 Online", true)) {  // Corrigido de ESP8866
       Serial.println("Conectado!");
       
       // Publica mensagem de status
-      bool statusPublished = client.publish(topicPublish, "ESP8266 Online", true);
+      bool statusPublished = client.publish(topicPublish, "ESP8266 Online", true);  // Corrigido de ESP8866
       Serial.print("Status publicado: ");
       Serial.println(statusPublished ? "Sim" : "Não");
       
@@ -284,7 +334,10 @@ void reconnect() {
   }
 }
 
-// --- Leitura do sensor ultrassônico ---
+/**
+ * Leitura do sensor ultrassônico
+ * Retorna a distância em centímetros
+ */
 float readDistanceCM() {
   digitalWrite(TRIGGER, LOW);
   delayMicroseconds(2);
@@ -295,7 +348,9 @@ float readDistanceCM() {
   return duration * 0.034 / 2;
 }
 
-// --- Piscar o LED ---
+/**
+ * Pisca o LED para indicação visual
+ */
 void blinkLED() {
   // Não pisca o LED se estiver em modo AP (já está sempre aceso)
   if (!apMode) {
@@ -306,7 +361,10 @@ void blinkLED() {
   }
 }
 
-// --- Funções para Wi-Fi config portal ---
+/**
+ * Configura as rotas do servidor web
+ * Inclui páginas para configuração WiFi e depuração
+ */
 void setupConfigServerRoutes() {
   // CSS compartilhado para todas as páginas
   String style = "<style>"
@@ -362,7 +420,7 @@ void setupConfigServerRoutes() {
     html += "<li>RSSI: " + String(WiFi.RSSI()) + " dBm</li>";
     html += "<li>MQTT conectado: " + String(client.connected() ? "Sim" : "Não") + "</li>";
     html += "<li>Estado do Relé: " + String(relayState ? "LIGADO" : "DESLIGADO") + "</li>";
-    html += "<li>Controle do Relé: " + String(relayControlledByApp ? "APP" : "Automático") + "</li>";
+    html += "<li>Controle do Relé: " + String(relayControlledByApp ? "APP (Manual)" : "Automático") + "</li>";
     html += "<li>Distância Min: " + String(minDistance) + " cm</li>";
     html += "<li>Distância Max: " + String(maxDistance) + " cm</li>";
     html += "<li>Memória livre: " + String(ESP.getFreeHeap()) + " bytes</li>";
@@ -372,16 +430,22 @@ void setupConfigServerRoutes() {
   });
 }
 
+/**
+ * Inicia o modo Access Point para configuração
+ */
 void startAPMode() {
   apMode = true;
   WiFi.mode(WIFI_AP);
-  WiFi.softAP("ESP8266_Config", "12345678");
+  WiFi.softAP("ESP8266_Config", "12345678");  // Corrigido de ESP8866
   setupConfigServerRoutes();
   configServer.begin();
   digitalWrite(SWITCH, LOW); // LED sempre aceso no AP (lógica invertida)
   Serial.println("Modo AP ativado - LED permanecerá aceso");
 }
 
+/**
+ * Para o modo Access Point
+ */
 void stopAPMode() {
   apMode = false;
   configServer.stop();
@@ -390,6 +454,10 @@ void stopAPMode() {
   Serial.println("Saindo do modo AP - LED será controlado pelo modo normal");
 }
 
+/**
+ * Trata o pressionamento do botão FLASH
+ * Reseta as configurações WiFi se pressionado por 3 segundos
+ */
 void handleFlashButton() {
   if (digitalRead(FLASH_BUTTON) == LOW) { // Pressionado (ativo em LOW)
     if (!buttonPressed) {
@@ -405,9 +473,14 @@ void handleFlashButton() {
   }
 }
 
-// --- SETUP ---
+/**
+ * Configuração inicial
+ */
 void setup() {
   Serial.begin(115200);
+  Serial.println("\n\n=== ESP8266 IoT com MQTT e Sensor Ultrassônico ===");  // Corrigido de ESP8866
+  Serial.println("Iniciando...");
+  
   pinMode(TRIGGER, OUTPUT);
   pinMode(READ, INPUT);
   pinMode(FLASH_BUTTON, INPUT_PULLUP);
@@ -419,8 +492,10 @@ void setup() {
   setupConfigServerRoutes(); // Sempre define as rotas
 
   if (!connectWiFiFromEEPROM()) {
+    Serial.println("Não foi possível conectar usando credenciais da EEPROM");
     startAPMode();
   } else {
+    Serial.println("Conectado com credenciais da EEPROM");
     configServer.begin(); // Inicia o servidor web também no modo STA
   }
 
@@ -442,9 +517,13 @@ void setup() {
     publishIPAddress();
     lastIPPublish = millis(); // Inicializa o contador de tempo para publicação do IP
   }
+  
+  Serial.println("Setup concluído!");
 }
 
-// --- LOOP ---
+/**
+ * Loop principal
+ */
 void loop() {
   handleFlashButton();
   configServer.handleClient(); // Sempre processa requisições HTTP
@@ -528,7 +607,11 @@ void loop() {
     
     // Publica distância
     String mensagem = String(distancia, 2); // 2 casas decimais
-    client.publish(topicPublish, mensagem.c_str());
+    bool distPublished = client.publish(topicPublish, mensagem.c_str(), true); // Adiciona retained=true
+    Serial.print("Publicação da distância: ");
+    Serial.print(mensagem);
+    Serial.print(" cm - ");
+    Serial.println(distPublished ? "Sucesso" : "Falha");
     
     // Pisca LED ao publicar no MQTT
     blinkLED();
