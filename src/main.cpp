@@ -60,15 +60,26 @@ void publishIPAddress() {
     
     // Tenta publicar o IP
     if (client.connected()) {
-      client.publish(topicIP, ip.c_str());
+      bool published = client.publish(topicIP, ip.c_str(), true); // Adiciona retained=true
+      Serial.print("Publicação do IP: ");
+      Serial.println(published ? "Sucesso" : "Falha");
     } else {
       // Se não estiver conectado ao MQTT, tenta conectar
+      Serial.println("Cliente MQTT desconectado. Tentando reconectar...");
       String clientId = "ESP8266Client-" + String(random(0xffff), HEX);
       if (client.connect(clientId.c_str())) {
-        client.publish(topicIP, ip.c_str());
+        Serial.println("Reconectado ao MQTT");
+        bool published = client.publish(topicIP, ip.c_str(), true); // Adiciona retained=true
+        Serial.print("Publicação do IP após reconexão: ");
+        Serial.println(published ? "Sucesso" : "Falha");
         client.subscribe(topicSubscribe);
+      } else {
+        Serial.print("Falha na reconexão, rc=");
+        Serial.println(client.state());
       }
     }
+  } else {
+    Serial.println("WiFi não conectado. Não é possível publicar o IP.");
   }
 }
 
@@ -150,13 +161,15 @@ void callback(char* topic, byte* payload, unsigned int length) {
     if (message == "LIGAR_RELE") {
       digitalWrite(RELAY_PIN, HIGH);
       relayState = true;
-      client.publish(topicRelay, "ON");
-      Serial.println("Relé LIGADO - Comando MQTT");
+      bool published = client.publish(topicRelay, "ON", true); // Adiciona retained=true
+      Serial.print("Relé LIGADO - Comando MQTT. Publicação: ");
+      Serial.println(published ? "Sucesso" : "Falha");
     } else if (message == "DESLIGAR_RELE") {
       digitalWrite(RELAY_PIN, LOW);
       relayState = false;
-      client.publish(topicRelay, "OFF");
-      Serial.println("Relé DESLIGADO - Comando MQTT");
+      bool published = client.publish(topicRelay, "OFF", true); // Adiciona retained=true
+      Serial.print("Relé DESLIGADO - Comando MQTT. Publicação: ");
+      Serial.println(published ? "Sucesso" : "Falha");
     } else if (message.startsWith("MIN:")) {
       minDistance = message.substring(4).toFloat();
       client.publish(topicRelay, ("MIN:" + String(minDistance)).c_str());
@@ -169,21 +182,41 @@ void callback(char* topic, byte* payload, unsigned int length) {
 
 // --- Reconectar MQTT ---
 void reconnect() {
-  while (!client.connected()) {
-    Serial.print("Tentando conectar ao MQTT...");
-    String clientId = "ESP32Client-" + String(random(0xffff), HEX);
+  int attempts = 0;
+  while (!client.connected() && attempts < 3) { // Limita a 3 tentativas por vez
+    attempts++;
+    Serial.print("Tentando conectar ao MQTT (tentativa ");
+    Serial.print(attempts);
+    Serial.print(")...");
+    
+    String clientId = "ESP8266Client-" + String(random(0xffff), HEX);
     if (client.connect(clientId.c_str())) {
       Serial.println("Conectado!");
-      client.publish(topicPublish, "ESP32 Online");
-      client.subscribe(topicSubscribe);
       
-      // Publica o IP atual no tópico meuESP8266/IPnaRede
+      // Publica mensagem de status
+      bool statusPublished = client.publish(topicPublish, "ESP8266 Online");
+      Serial.print("Status publicado: ");
+      Serial.println(statusPublished ? "Sim" : "Não");
+      
+      // Inscreve-se no tópico de entrada
+      bool subscribed = client.subscribe(topicSubscribe);
+      Serial.print("Inscrito no tópico: ");
+      Serial.println(subscribed ? "Sim" : "Não");
+      
+      // Publica o estado atual do relé
+      bool relayPublished = client.publish(topicRelay, relayState ? "ON" : "OFF", true);
+      Serial.print("Estado do relé publicado: ");
+      Serial.println(relayPublished ? "Sim" : "Não");
+      
+      // Publica o IP atual
       publishIPAddress();
+      
+      return; // Sai da função se conectou com sucesso
     } else {
       Serial.print("Falhou, rc=");
       Serial.print(client.state());
-      Serial.println(" tentando novamente em 5 segundos");
-      delay(5000);
+      Serial.println(" tentando novamente em 2 segundos");
+      delay(2000);
     }
   }
 }
@@ -221,6 +254,9 @@ void setup() {
   // MQTT
   client.setServer(mqttServer, mqttPort);
   client.setCallback(callback);
+  
+  // Aumenta o tamanho do buffer para mensagens MQTT (padrão é 256 bytes)
+  client.setBufferSize(512);
 
   // Semente para ID aleatório
   randomSeed(micros());
@@ -243,9 +279,13 @@ void loop() {
     return; // Sai da função para não executar o resto do código
   }
 
+  // Verifica conexão MQTT e tenta reconectar se necessário
   if (!client.connected()) {
+    Serial.println("Cliente MQTT desconectado no loop principal");
     reconnect();
   }
+  
+  // Processa mensagens MQTT recebidas
   client.loop();
 
   // Mantém o LED desligado quando conectado (só pisca ao publicar/receber)
@@ -257,7 +297,20 @@ void loop() {
   // Publicação do IP a cada minuto
   if (now - lastIPPublish > ipPublishInterval) {
     lastIPPublish = now;
+    Serial.println("Intervalo de publicação do IP atingido");
     publishIPAddress();
+  }
+  
+  // Forçar publicação do IP a cada 10 segundos durante os primeiros 2 minutos após inicialização
+  static bool initialPhase = true;
+  static unsigned long startTime = millis();
+  if (initialPhase && (now - startTime < 120000)) { // 2 minutos
+    if (now % 10000 < interval) { // A cada 10 segundos
+      Serial.println("Fase inicial: publicação frequente do IP");
+      publishIPAddress();
+    }
+  } else {
+    initialPhase = false;
   }
   
   if (now - lastMsg > interval) {
@@ -280,7 +333,18 @@ void loop() {
     
     // Publica o estado do relé se houve mudança
     if (oldRelayState != relayState) {
-      client.publish(topicRelay, relayState ? "ON" : "OFF");
+      if (client.connected()) {
+        client.publish(topicRelay, relayState ? "ON" : "OFF");
+        Serial.print("Publicando estado do relé: ");
+        Serial.println(relayState ? "ON" : "OFF");
+      }
+    }
+    
+    // Publica o estado do relé periodicamente, independente de mudança
+    if (now % 10000 < interval) { // A cada 10 segundos
+      if (client.connected()) {
+        client.publish(topicRelay, relayState ? "ON" : "OFF");
+      }
     }
     
     // Publica distância
