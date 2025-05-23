@@ -128,6 +128,10 @@ monitor_speed = 115200
 
 ### Monitoramento
 - Acesse http://[IP-DO-ESP]/debug para ver o status do sistema
+  - **Status do Sistema**: Informações sobre WiFi, MQTT e estado atual
+  - **Broker MQTT**: Mostra qual broker está sendo usado e seu status
+  - **Tópicos MQTT**: Lista todos os tópicos usados pelo dispositivo
+  - **Comandos Disponíveis**: Lista todos os comandos que podem ser enviados
 - Para resetar as configurações, mantenha o botão FLASH pressionado por 3 segundos
 - Observe o LED integrado para entender o status:
   - **Sempre aceso**: Modo AP ativo (aguardando configuração)

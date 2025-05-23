@@ -371,6 +371,7 @@ void setupConfigServerRoutes() {
     "body{background:#0a2540;font-family:sans-serif;margin:0;padding:0;}"
     ".centerbox{background:#fff3;border-radius:12px;box-shadow:0 2px 8px #0002;width:340px;margin:60px auto;padding:32px 24px;}"
     "h2{color:#fff;text-align:center;margin-bottom:24px;}"
+    "h3{color:#fff;margin-top:20px;margin-bottom:10px;border-top:1px solid #fff3;padding-top:15px;}"
     "form{display:flex;flex-direction:column;gap:16px;}"
     "label{color:#fff;font-size:1.1em;}"
     "select,input[type=password]{padding:8px 10px;border-radius:6px;border:1px solid #ccc;font-size:1em;}"
@@ -378,6 +379,8 @@ void setupConfigServerRoutes() {
     "button:hover{background:#125ea2;}"
     ".debug-list{background:#fff3;border-radius:8px;padding:18px 18px 18px 32px;margin-top:18px;}"
     ".debug-list li{color:#222;font-size:1.05em;margin-bottom:8px;}"
+    "strong{color:#1976d2;}"
+    ".topic{font-family:monospace;background:#fff1;padding:2px 6px;border-radius:3px;}"
     "</style>";
 
   configServer.on("/", HTTP_GET, [style]() {
@@ -413,19 +416,32 @@ void setupConfigServerRoutes() {
     String html = "<!DOCTYPE html><html lang='pt-br'><head><meta charset='UTF-8'><title>Depuração ESP8266</title>" + style + "</head><body>"
       "<div class='centerbox'>"
       "<h2>Depuração ESP8266</h2>"
-      "<ul class='debug-list'>";
-    html += "<li>Status Wi-Fi: " + String(WiFi.status() == WL_CONNECTED ? "Conectado" : "Desconectado") + "</li>";
-    html += "<li>IP Local: " + WiFi.localIP().toString() + "</li>";
-    html += "<li>SSID: " + WiFi.SSID() + "</li>";
-    html += "<li>RSSI: " + String(WiFi.RSSI()) + " dBm</li>";
-    html += "<li>MQTT conectado: " + String(client.connected() ? "Sim" : "Não") + "</li>";
-    html += "<li>Estado do Relé: " + String(relayState ? "LIGADO" : "DESLIGADO") + "</li>";
-    html += "<li>Controle do Relé: " + String(relayControlledByApp ? "APP (Manual)" : "Automático") + "</li>";
-    html += "<li>Distância Min: " + String(minDistance) + " cm</li>";
-    html += "<li>Distância Max: " + String(maxDistance) + " cm</li>";
-    html += "<li>Memória livre: " + String(ESP.getFreeHeap()) + " bytes</li>";
-    html += "<li>Tempo desde boot: " + String(millis() / 1000) + " s</li>";
-    html += "</ul></div></body></html>";
+      "<ul class='debug-list'>"
+      "<h3>Status do Sistema</h3>"
+      "<li><strong>Status Wi-Fi:</strong> " + String(WiFi.status() == WL_CONNECTED ? "Conectado" : "Desconectado") + "</li>"
+      "<li><strong>IP Local:</strong> " + WiFi.localIP().toString() + "</li>"
+      "<li><strong>SSID:</strong> " + WiFi.SSID() + "</li>"
+      "<li><strong>RSSI:</strong> " + String(WiFi.RSSI()) + " dBm</li>"
+      "<li><strong>Broker MQTT:</strong> " + String(mqttServer) + ":" + String(mqttPort) + "</li>"
+      "<li><strong>MQTT conectado:</strong> " + String(client.connected() ? "Sim" : "Não") + "</li>"
+      "<li><strong>Estado do Relé:</strong> " + String(relayState ? "LIGADO" : "DESLIGADO") + "</li>"
+      "<li><strong>Controle do Relé:</strong> " + String(relayControlledByApp ? "APP (Manual)" : "Automático") + "</li>"
+      "<li><strong>Distância Min:</strong> " + String(minDistance) + " cm</li>"
+      "<li><strong>Distância Max:</strong> " + String(maxDistance) + " cm</li>"
+      "<li><strong>Memória livre:</strong> " + String(ESP.getFreeHeap()) + " bytes</li>"
+      "<li><strong>Tempo desde boot:</strong> " + String(millis() / 1000) + " s</li>"
+      "<h3>Tópicos MQTT</h3>"
+      "<li><strong>Entrada de comandos:</strong> <span class='topic'>" + String(topicSubscribe) + "</span></li>"
+      "<li><strong>Saída de distância:</strong> <span class='topic'>" + String(topicPublish) + "</span></li>"
+      "<li><strong>Estado do relé:</strong> <span class='topic'>" + String(topicRelay) + "</span></li>"
+      "<li><strong>IP na rede:</strong> <span class='topic'>" + String(topicIP) + "</span></li>"
+      "<h3>Comandos Disponíveis</h3>"
+      "<li><strong>LIGAR_RELE</strong> - Liga o relé manualmente</li>"
+      "<li><strong>DESLIGAR_RELE</strong> - Desliga o relé manualmente</li>"
+      "<li><strong>AUTO_RELE</strong> - Volta ao modo automático</li>"
+      "<li><strong>MIN:valor</strong> - Define distância mínima (ex: MIN:10.0)</li>"
+      "<li><strong>MAX:valor</strong> - Define distância máxima (ex: MAX:50.0)</li>"
+      "</ul></div></body></html>";
     configServer.send(200, "text/html; charset=utf-8", html);
   });
 }
