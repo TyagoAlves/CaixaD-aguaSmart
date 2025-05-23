@@ -121,10 +121,78 @@ monitor_speed = 115200
 ## ⚙️ Configuração
 
 ### Primeira Configuração
-1. O ESP8266 cria uma rede WiFi "ESP8266_Config" (senha: 12345678)
-2. Conecte-se a esta rede e acesse 192.168.4.1 no navegador
-3. Selecione sua rede WiFi e insira a senha
-4. O dispositivo reiniciará e se conectará à sua rede
+1. **Preparação Inicial**
+   - O ESP8266 cria automaticamente uma rede WiFi chamada "ESP8266_Config"
+   - Senha padrão: `12345678`
+   - IP fixo configurado: `192.168.0.1`
+
+2. **Conexão à Rede de Configuração**
+   - Em seu dispositivo, procure a rede WiFi "ESP8266_Config"
+   - Conecte-se usando a senha: `12345678`
+   - Aguarde até estabelecer a conexão
+   - O LED do ESP8266 ficará aceso continuamente
+
+3. **Acesso à Interface Web**
+   - Abra qualquer navegador web
+   - Digite na barra de endereços: `http://192.168.0.1`
+   - Você verá a página de configuração WiFi
+   - Interface intuitiva e responsiva
+
+4. **Configuração da Sua Rede WiFi**
+   - Na página de configuração:
+     - Selecione sua rede WiFi da lista disponível
+     - Digite a senha da sua rede
+     - Clique no botão "Salvar"
+   - O dispositivo salvará as configurações e reiniciará
+   - Após reiniciar, conectará automaticamente à sua rede
+
+### Páginas Web Disponíveis
+
+1. **Página Principal de Configuração**
+   - Endereço: `http://192.168.0.1`
+   - Funcionalidades:
+     - Lista de redes WiFi disponíveis
+     - Campo seguro para senha
+     - Botão de salvamento
+     - Design responsivo para mobile
+
+2. **Página de Diagnóstico do Sistema**
+   - Endereço: `http://192.168.0.1/debug`
+   - Informações disponíveis:
+     - Status da conexão WiFi
+     - Força do sinal (RSSI)
+     - Estado da conexão MQTT
+     - Status atual do relé
+     - Leitura do sensor
+     - Memória disponível
+     - Tempo de execução
+     - Lista de comandos MQTT
+
+### Resolução de Problemas
+
+1. **Problemas de Acesso ao IP 192.168.0.1**
+   - Verifique se está conectado à rede "ESP8266_Config"
+   - Desligue os dados móveis do seu dispositivo
+   - Tente usar outro navegador
+   - Limpe o cache do navegador
+   - Reinicie o ESP8266 se necessário
+
+2. **LED Indicador**
+   - LED sempre aceso: Modo AP ativo (192.168.0.1 disponível)
+   - LED apagado: Conectado à sua rede WiFi
+   - LED piscando: Comunicação MQTT ativa
+
+3. **Reset de Configurações**
+   - Mantenha o botão FLASH pressionado por 3 segundos
+   - O LED ficará aceso indicando modo AP
+   - O dispositivo voltará ao IP 192.168.0.1
+   - Repita o processo de configuração
+
+### Notas Importantes
+- O endereço 192.168.0.1 só está disponível durante o modo AP
+- Após configurado, o ESP8266 usará um IP da sua rede
+- O novo IP será publicado no tópico MQTT `meuESP8266/IPnaRede`
+- A página de diagnóstico continuará acessível no novo IP
 
 ### Monitoramento
 - Acesse http://[IP-DO-ESP]/debug para ver o status do sistema

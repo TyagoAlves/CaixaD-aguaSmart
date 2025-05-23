@@ -7,12 +7,24 @@
  * ESP8266 IoT com MQTT e Configuração Web
  * 
  * Este projeto implementa um sistema IoT baseado em ESP8266 com as seguintes funcionalidades:
- * - Comunicação MQTT com broker público (test.mosquitto.org)
- * - Servidor web para configuração WiFi e depuração
+ * - Interface web de configuração acessível em http://192.168.0.1
+ * - Página de diagnóstico em http://192.168.0.1/debug
+ * - Modo AP automático com SSID "ESP8266_Config" e senha "12345678"
+ * - Comunicação MQTT com broker público (broker.emqx.io)
  * - Sensor ultrassônico para medição de distância
  * - Controle de relé baseado na distância ou comandos MQTT
  * - Modos de operação automático e manual para o relé
  * - Publicação periódica do IP e estado do relé
+ * 
+ * Configuração Inicial:
+ * 1. Na primeira execução, conecte-se à rede "ESP8266_Config" (senha: 12345678)
+ * 2. Acesse http://192.168.0.1 no navegador
+ * 3. Selecione sua rede WiFi e insira a senha
+ * 4. O dispositivo reiniciará e se conectará à sua rede
+ * 
+ * Para resetar as configurações:
+ * - Pressione o botão FLASH por 3 segundos
+ * - O dispositivo entrará em modo AP novamente
  * 
  * Autor: Seu Nome
  * Data: Junho/2024
@@ -452,11 +464,26 @@ void setupConfigServerRoutes() {
 void startAPMode() {
   apMode = true;
   WiFi.mode(WIFI_AP);
-  WiFi.softAP("ESP8266_Config", "12345678");  // Corrigido de ESP8866
+  
+  // Configura o IP fixo para o modo AP como 192.168.0.1
+  IPAddress apIP(192, 168, 0, 1);
+  IPAddress subnet(255, 255, 255, 0);
+  
+  // Garante que o IP seja configurado corretamente
+  bool success = WiFi.softAPConfig(apIP, apIP, subnet);
+  
+  // Inicia o AP com o nome e senha
+  WiFi.softAP("ESP8266_Config", "12345678");
+  
   setupConfigServerRoutes();
   configServer.begin();
   digitalWrite(SWITCH, LOW); // LED sempre aceso no AP (lógica invertida)
+  
   Serial.println("Modo AP ativado - LED permanecerá aceso");
+  Serial.print("IP do AP configurado com sucesso: ");
+  Serial.println(success ? "Sim" : "Não");
+  Serial.print("IP do AP: ");
+  Serial.println(WiFi.softAPIP());
 }
 
 /**
