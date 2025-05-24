@@ -26,8 +26,8 @@
  * - Pressione o botão FLASH por 3 segundos
  * - O dispositivo entrará em modo AP novamente
  * 
- * Autor: Seu Nome
- * Data: Junho/2024
+ * Autor: Tyago Alves
+ * Data: Maio/2025
  */
 
 // --- Definições de pinos ---
